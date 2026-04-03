@@ -12,6 +12,12 @@ import java.io.IOException;
 public class VideoGlitcher extends PApplet {
 
     private static LaunchOptions launchOptions = LaunchOptions.defaults();
+    private static final float PLAYBACK_END_EPSILON_SECONDS = 0.05f;
+    private static final String PLAY_SYMBOL = "\u25B6";
+    private static final String PAUSE_SYMBOL = "\u23F8";
+    private static final String REWIND_TO_START_SYMBOL = "\u23EE";
+    private static final String LOOPING_LABEL = "Looping";
+    private static final String PLAY_ONCE_LABEL = "Play Once";
 
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
@@ -31,6 +37,7 @@ public class VideoGlitcher extends PApplet {
     private boolean movieReady = false;
     private boolean exporting = false;
     private boolean paused = false;
+    private boolean loopPlayback = true;
     private boolean glitchEnabled = false;
     private boolean hasLoadedFirstVideo = false;
     private String exportFilename = "glitched_export.mp4";
@@ -84,6 +91,7 @@ public class VideoGlitcher extends PApplet {
     private float offsetY = 0;
 
     private Button pausePlayButton;
+    private Button playbackModeButton;
     private Button glitchToggleButton;
     private DropdownList presetList;
     private Textlabel statusLabel;
@@ -190,6 +198,8 @@ public class VideoGlitcher extends PApplet {
         if (launchOptions.smokeTest()) {
             runSmokeCycle();
         }
+
+        updatePlaybackCompletion();
     }
 
     @Override
@@ -342,31 +352,45 @@ public class VideoGlitcher extends PApplet {
 
         Button bLoad = cp5.addButton("loadVideo")
                 .setPosition(x, y)
-            .setSize(72, 30)
+                .setSize(72, 30)
                 .setLabel("Load Video");
         bLoad.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
+        Button rewindButton = cp5.addButton("rewindToStart")
+                .setPosition(x + 80, y)
+                .setSize(40, 30)
+                .setLabel(REWIND_TO_START_SYMBOL);
+        rewindButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+
         pausePlayButton = cp5.addButton("pausePlay")
-            .setPosition(x + 80, y)
-            .setSize(72, 30)
-            .setLabel("Play");
+                .setPosition(x + 128, y)
+                .setSize(40, 30)
+                .setLabel(PLAY_SYMBOL);
         pausePlayButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
+        playbackModeButton = cp5.addButton("togglePlaybackMode")
+                .setPosition(x + 176, y)
+                .setSize(92, 30)
+                .setLabel(LOOPING_LABEL);
+        playbackModeButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+
+        y += 38;
+
         glitchToggleButton = cp5.addButton("toggleGlitching")
-            .setPosition(x + 160, y)
-            .setSize(72, 30)
-            .setLabel("Glitch");
+                .setPosition(x, y)
+                .setSize(88, 30)
+                .setLabel("Glitch");
         glitchToggleButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
         Button b1 = cp5.addButton("startExport")
-            .setPosition(x + 240, y)
-            .setSize(72, 30)
+                .setPosition(x + 96, y)
+                .setSize(96, 30)
                 .setLabel("Export Start");
         b1.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
         Button b2 = cp5.addButton("stopExport")
-            .setPosition(x + 320, y)
-            .setSize(72, 30)
+                .setPosition(x + 200, y)
+                .setSize(96, 30)
                 .setLabel("Export Stop");
         b2.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
@@ -377,6 +401,7 @@ public class VideoGlitcher extends PApplet {
                 .setText("Status: no video loaded");
 
         updatePausePlayButton();
+        updatePlaybackModeButton();
         updateGlitchButton();
     }
 
@@ -459,6 +484,39 @@ public class VideoGlitcher extends PApplet {
         togglePausePlay();
     }
 
+    public void rewindToStart() {
+        if (video == null) {
+            return;
+        }
+
+        video.jump(0);
+        if (paused) {
+            pausedFrame = video.get();
+            video.pause();
+            statusLabel.setText("Status: rewound " + currentVideoName);
+        } else {
+            startPlayback();
+            statusLabel.setText("Status: previewing " + currentVideoName);
+        }
+
+        updatePausePlayButton();
+    }
+
+    public void togglePlaybackMode() {
+        loopPlayback = !loopPlayback;
+
+        if (video != null && !paused) {
+            if (loopPlayback) {
+                video.loop();
+            } else {
+                video.noLoop();
+            }
+        }
+
+        statusLabel.setText("Status: playback mode " + (loopPlayback ? "looping" : "play once"));
+        updatePlaybackModeButton();
+    }
+
     public void toggleGlitching() {
         glitchEnabled = !glitchEnabled;
         statusLabel.setText("Status: glitching " + (glitchEnabled ? "enabled" : "disabled"));
@@ -521,7 +579,7 @@ public class VideoGlitcher extends PApplet {
         println("Loading video " + sourceLabel + ": " + source);
         try {
             video = new Movie(this, source);
-            video.loop();
+            startPlayback();
             statusLabel.setText("Status: loading " + currentVideoName + " via " + sourceLabel);
         } catch (RuntimeException exception) {
             video = null;
@@ -621,14 +679,16 @@ public class VideoGlitcher extends PApplet {
         String exp = exporting ? "EXPORTING" : "PREVIEW";
         String gui = showGUI ? "GUI ON" : "GUI OFF";
         String playback = paused ? "PAUSED" : "PLAYING";
+        String playbackMode = loopPlayback ? "LOOP" : "ONCE";
 
         text(
                 "Video: " + currentVideoName +
                         "   Mode: " + mode +
-                "   Playback: " + playback +
+                        "   Playback: " + playback +
+                        "   Repeat: " + playbackMode +
                         "   Output: " + exp +
                         "   " + gui +
-                    "   SPACE play/pause   G glitch   L load   F freeze   H hud   U gui   E export",
+                        "   SPACE play/pause   G glitch   L load   F freeze   H hud   U gui   E export",
                 20, height - 18);
     }
 
@@ -1110,10 +1170,45 @@ public class VideoGlitcher extends PApplet {
             statusLabel.setText("Status: paused " + currentVideoName);
         } else {
             pausedFrame = null;
-            video.play();
+            if (isAtPlaybackEnd()) {
+                video.jump(0);
+            }
+            startPlayback();
             statusLabel.setText("Status: previewing " + currentVideoName);
         }
 
+        updatePausePlayButton();
+    }
+
+    private void startPlayback() {
+        if (video == null) {
+            return;
+        }
+
+        if (loopPlayback) {
+            video.loop();
+        } else {
+            video.play();
+        }
+    }
+
+    private boolean isAtPlaybackEnd() {
+        if (!movieReady || video == null) {
+            return false;
+        }
+
+        return video.duration() > 0
+                && video.time() >= max(0, video.duration() - PLAYBACK_END_EPSILON_SECONDS);
+    }
+
+    private void updatePlaybackCompletion() {
+        if (!movieReady || video == null || paused || loopPlayback || video.isPlaying() || !isAtPlaybackEnd()) {
+            return;
+        }
+
+        paused = true;
+        pausedFrame = video.get();
+        statusLabel.setText("Status: finished " + currentVideoName);
         updatePausePlayButton();
     }
 
@@ -1121,7 +1216,15 @@ public class VideoGlitcher extends PApplet {
         if (pausePlayButton == null)
             return;
 
-        pausePlayButton.setLabel(video == null || paused ? "Play" : "Pause");
+        pausePlayButton.setLabel(video == null || paused ? PLAY_SYMBOL : PAUSE_SYMBOL);
+    }
+
+    private void updatePlaybackModeButton() {
+        if (playbackModeButton == null) {
+            return;
+        }
+
+        playbackModeButton.setLabel(loopPlayback ? LOOPING_LABEL : PLAY_ONCE_LABEL);
     }
 
     private void updateGlitchButton() {
