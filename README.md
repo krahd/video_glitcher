@@ -39,7 +39,7 @@ All releases:
 Build from the project root with:
 
 ```sh
-javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*" -d bin src/tom/videoGlitcher/VideoGlitcher.java
+javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*" -d bin src/tom/videoGlitcher/VideoGlitcher.java
 ```
 
 In VS Code, run the default build task:
@@ -109,7 +109,7 @@ Each debug launch is configured with the correct bundled libraries and native vi
 ## Run From Terminal
 
 ```sh
-java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*" \
+java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*" \
   -Dgstreamer.library.path="$PWD/lib/video/library/macos-aarch64" \
   -Dgstreamer.plugin.path="$PWD/lib/video/library/macos-aarch64/gstreamer-1.0" \
   tom.videoGlitcher.VideoGlitcher

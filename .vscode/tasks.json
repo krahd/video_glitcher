@@ -7,7 +7,7 @@
             "command": "javac",
             "args": [
                 "-cp",
-                "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*",
+                "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*",
                 "-d",
                 "bin",
                 "src/tom/videoGlitcher/VideoGlitcher.java"
@@ -15,7 +15,7 @@
             "windows": {
                 "args": [
                     "-cp",
-                    "lib\\core.jar;lib\\controlP5\\library\\*;lib\\processing-opengl\\library\\*;lib\\video\\library\\*;lib\\videoExport\\library\\*",
+                    "lib\\core.jar;lib\\controlP5\\library\\*;lib\\processing-opengl\\library\\*;lib\\video\\library\\*;lib\\VideoExport\\library\\*",
                     "-d",
                     "bin",
                     "src\\tom\\videoGlitcher\\VideoGlitcher.java"
@@ -36,7 +36,7 @@
             "command": "javac",
             "args": [
                 "-cp",
-                "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*",
+                "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*",
                 "-d",
                 "bin",
                 "src/tom/videoGlitcher/VideoGlitcher.java"
@@ -52,7 +52,7 @@
             "command": "javac",
             "args": [
                 "-cp",
-                "lib\\core.jar;lib\\controlP5\\library\\*;lib\\processing-opengl\\library\\*;lib\\video\\library\\*;lib\\videoExport\\library\\*",
+                "lib\\core.jar;lib\\controlP5\\library\\*;lib\\processing-opengl\\library\\*;lib\\video\\library\\*;lib\\VideoExport\\library\\*",
                 "-d",
                 "bin",
                 "src\\tom\\videoGlitcher\\VideoGlitcher.java"
@@ -68,7 +68,7 @@
             "command": "java",
             "args": [
                 "-cp",
-                "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*",
+                "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*",
                 "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/macos-aarch64",
                 "-Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/macos-aarch64/gstreamer-1.0",
                 "tom.videoGlitcher.VideoGlitcher"
@@ -85,7 +85,7 @@
             "command": "java",
             "args": [
                 "-cp",
-                "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*",
+                "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*",
                 "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/linux-amd64",
                 "-Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/linux-amd64/gstreamer-1.0",
                 "tom.videoGlitcher.VideoGlitcher"
@@ -102,7 +102,7 @@
             "command": "java",
             "args": [
                 "-cp",
-                "bin;lib\\core.jar;lib\\controlP5\\library\\*;lib\\processing-opengl\\library\\*;lib\\video\\library\\*;lib\\videoExport\\library\\*",
+                "bin;lib\\core.jar;lib\\controlP5\\library\\*;lib\\processing-opengl\\library\\*;lib\\video\\library\\*;lib\\VideoExport\\library\\*",
                 "-Dgstreamer.library.path=${workspaceFolder}\\lib\\video\\library\\windows-amd64",
                 "-Dgstreamer.plugin.path=${workspaceFolder}\\lib\\video\\library\\windows-amd64\\gstreamer-1.0",
                 "tom.videoGlitcher.VideoGlitcher"
@@ -116,7 +116,7 @@
         {
             "label": "Package VideoGlitcher (macOS app)",
             "type": "shell",
-            "command": "rm -rf dist/package-input dist/VideoGlitcher.app && mkdir -p dist/package-input && jar --create --file dist/package-input/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/package-input/ && cp lib/controlP5/library/*.jar dist/package-input/ && cp lib/processing-opengl/library/*.jar dist/package-input/ && cp lib/videoExport/library/*.jar dist/package-input/ && cp lib/video/library/*.jar dist/package-input/ && cp -R lib/video/library/macos-aarch64 dist/package-input/video-macos-aarch64 && jpackage --type app-image --name VideoGlitcher --dest dist --input dist/package-input --main-jar VideoGlitcher.jar --main-class tom.videoGlitcher.VideoGlitcher --java-options \"-Dgstreamer.library.path=\$APPDIR/Contents/app/video-macos-aarch64\" --java-options \"-Dgstreamer.plugin.path=\$APPDIR/Contents/app/video-macos-aarch64/gstreamer-1.0\"",
+            "command": "rm -rf dist/package-input dist/VideoGlitcher.app && mkdir -p dist/package-input && jar --create --file dist/package-input/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/package-input/ && cp lib/controlP5/library/*.jar dist/package-input/ && cp lib/processing-opengl/library/*.jar dist/package-input/ && cp lib/VideoExport/library/*.jar dist/package-input/ && cp lib/video/library/*.jar dist/package-input/ && cp -R lib/video/library/macos-aarch64 dist/package-input/video-macos-aarch64 && jpackage --type app-image --name VideoGlitcher --dest dist --input dist/package-input --main-jar VideoGlitcher.jar --main-class tom.videoGlitcher.VideoGlitcher --java-options \"-Dgstreamer.library.path=\$APPDIR/Contents/app/video-macos-aarch64\" --java-options \"-Dgstreamer.plugin.path=\$APPDIR/Contents/app/video-macos-aarch64/gstreamer-1.0\"",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -126,7 +126,7 @@
         {
             "label": "Package VideoGlitcher Release (macOS Apple Silicon)",
             "type": "shell",
-            "command": "rm -rf dist/release-macos dist/VideoGlitcher-macos-aarch64.zip && mkdir -p dist/release-macos/VideoGlitcher/lib dist/release-macos/VideoGlitcher/video && jar --create --file dist/release-macos/VideoGlitcher/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/controlP5/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/processing-opengl/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/videoExport/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/video/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp -R lib/video/library/macos-aarch64 dist/release-macos/VideoGlitcher/video/ && cp packaging/portable/run-macos.sh dist/release-macos/VideoGlitcher/ && chmod +x dist/release-macos/VideoGlitcher/run-macos.sh && cd dist/release-macos && zip -r ../VideoGlitcher-macos-aarch64.zip VideoGlitcher",
+            "command": "rm -rf dist/release-macos dist/VideoGlitcher-macos-aarch64.zip && mkdir -p dist/release-macos/VideoGlitcher/lib dist/release-macos/VideoGlitcher/video && jar --create --file dist/release-macos/VideoGlitcher/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/controlP5/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/processing-opengl/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/VideoExport/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp lib/video/library/*.jar dist/release-macos/VideoGlitcher/lib/ && cp -R lib/video/library/macos-aarch64 dist/release-macos/VideoGlitcher/video/ && cp packaging/portable/run-macos.sh dist/release-macos/VideoGlitcher/ && chmod +x dist/release-macos/VideoGlitcher/run-macos.sh && cd dist/release-macos && zip -r ../VideoGlitcher-macos-aarch64.zip VideoGlitcher",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -136,7 +136,7 @@
         {
             "label": "Package VideoGlitcher Release (Linux x64)",
             "type": "shell",
-            "command": "rm -rf dist/release-linux dist/VideoGlitcher-linux-amd64.zip && mkdir -p dist/release-linux/VideoGlitcher/lib dist/release-linux/VideoGlitcher/video && jar --create --file dist/release-linux/VideoGlitcher/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/controlP5/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/processing-opengl/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/videoExport/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/video/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp -R lib/video/library/linux-amd64 dist/release-linux/VideoGlitcher/video/ && cp packaging/portable/run-linux.sh dist/release-linux/VideoGlitcher/ && chmod +x dist/release-linux/VideoGlitcher/run-linux.sh && cd dist/release-linux && zip -r ../VideoGlitcher-linux-amd64.zip VideoGlitcher",
+            "command": "rm -rf dist/release-linux dist/VideoGlitcher-linux-amd64.zip && mkdir -p dist/release-linux/VideoGlitcher/lib dist/release-linux/VideoGlitcher/video && jar --create --file dist/release-linux/VideoGlitcher/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/controlP5/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/processing-opengl/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/VideoExport/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp lib/video/library/*.jar dist/release-linux/VideoGlitcher/lib/ && cp -R lib/video/library/linux-amd64 dist/release-linux/VideoGlitcher/video/ && cp packaging/portable/run-linux.sh dist/release-linux/VideoGlitcher/ && chmod +x dist/release-linux/VideoGlitcher/run-linux.sh && cd dist/release-linux && zip -r ../VideoGlitcher-linux-amd64.zip VideoGlitcher",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -150,7 +150,7 @@
             "args": [
                 "-NoProfile",
                 "-Command",
-                "Remove-Item -Recurse -Force dist/release-windows, dist/VideoGlitcher-windows-amd64.zip -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force dist/release-windows/VideoGlitcher/lib | Out-Null; New-Item -ItemType Directory -Force dist/release-windows/VideoGlitcher/video | Out-Null; jar --create --file dist/release-windows/VideoGlitcher/VideoGlitcher.jar -C bin .; Copy-Item lib/core.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/controlP5/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/processing-opengl/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/videoExport/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/video/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item -Recurse lib/video/library/windows-amd64 dist/release-windows/VideoGlitcher/video/; Copy-Item packaging/portable/run-windows.bat dist/release-windows/VideoGlitcher/; Compress-Archive -Path dist/release-windows/VideoGlitcher -DestinationPath dist/VideoGlitcher-windows-amd64.zip -Force"
+                "Remove-Item -Recurse -Force dist/release-windows, dist/VideoGlitcher-windows-amd64.zip -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force dist/release-windows/VideoGlitcher/lib | Out-Null; New-Item -ItemType Directory -Force dist/release-windows/VideoGlitcher/video | Out-Null; jar --create --file dist/release-windows/VideoGlitcher/VideoGlitcher.jar -C bin .; Copy-Item lib/core.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/controlP5/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/processing-opengl/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/VideoExport/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item lib/video/library/*.jar dist/release-windows/VideoGlitcher/lib/; Copy-Item -Recurse lib/video/library/windows-amd64 dist/release-windows/VideoGlitcher/video/; Copy-Item packaging/portable/run-windows.bat dist/release-windows/VideoGlitcher/; Compress-Archive -Path dist/release-windows/VideoGlitcher -DestinationPath dist/VideoGlitcher-windows-amd64.zip -Force"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
