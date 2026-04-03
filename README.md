@@ -1,5 +1,9 @@
 # Video Glitcher
 
+![Animated preview of Video Glitcher](assets/video-glitcher-preview.gif)
+
+_Compact animated preview of the fullscreen glitch playback interface._
+
 Video Glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and can export the result as an MP4.
 
 The repository is self-contained and includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows.
