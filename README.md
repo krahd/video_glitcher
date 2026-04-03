@@ -10,15 +10,9 @@ The repository is self-contained and includes the Processing OpenGL jars needed 
 
 ## Releases
 
-Current public release:
+Latest release page:
 
-- [v1.0.3 release page](https://github.com/krahd/video_glitcher/releases/tag/v1.0.3)
-
-Direct downloads for `v1.0.3`:
-
-- [macOS Apple Silicon](https://github.com/krahd/video_glitcher/releases/download/v1.0.3/VideoGlitcher-macos-aarch64.zip)
-- [Linux x64](https://github.com/krahd/video_glitcher/releases/download/v1.0.3/VideoGlitcher-linux-amd64.zip)
-- [Windows x64](https://github.com/krahd/video_glitcher/releases/download/v1.0.3/VideoGlitcher-windows-amd64.zip)
+- [GitHub Releases](https://github.com/krahd/video_glitcher/releases)
 
 Latest release downloads:
 
@@ -26,15 +20,7 @@ Latest release downloads:
 - [Linux x64](https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-linux-amd64.zip)
 - [Windows x64](https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-windows-amd64.zip)
 
-All releases:
-
-- [GitHub Releases](https://github.com/krahd/video_glitcher/releases)
-
-SHA-256 checksums for `v1.0.3`:
-
-- `VideoGlitcher-macos-aarch64.zip`: `ddd9cdcc2da98a08afec050fbaea7d185372d59473735b32b532b62117e975b1`
-- `VideoGlitcher-linux-amd64.zip`: `a5105b92adb4f0279f859393838a7d9207c8ed8793a1957a70da3d14cc221034`
-- `VideoGlitcher-windows-amd64.zip`: `718ca232cdb6f066e3fb14328dbb11985c5a4bc76e997446fbb6b79f4ba38758`
+For version-pinned downloads and release-specific details, open the release page for the tag you want.
 
 ## Project Layout
 
