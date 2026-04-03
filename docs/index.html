@@ -12,6 +12,7 @@
             --bg: #090909;
             --panel: rgba(17, 17, 17, 0.82);
             --panel-strong: rgba(23, 23, 23, 0.94);
+            --panel-soft: rgba(255, 255, 255, 0.03);
             --ink: #f6f1e8;
             --muted: #c3beb5;
             --line: rgba(255, 255, 255, 0.1);
@@ -50,8 +51,16 @@
             mix-blend-mode: soft-light;
         }
 
+        body.modal-open {
+            overflow: hidden;
+        }
+
         a {
             color: inherit;
+        }
+
+        code {
+            font-family: "IBM Plex Mono", monospace;
         }
 
         .shell {
@@ -60,18 +69,23 @@
             padding: 28px 0 48px;
         }
 
-        .hero {
+        .hero,
+        .section {
             position: relative;
             overflow: hidden;
             border: 1px solid var(--line);
             border-radius: 28px;
+            background: var(--panel);
+            backdrop-filter: blur(14px);
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
             padding: 28px;
             background:
                 linear-gradient(135deg, rgba(255, 90, 54, 0.16), transparent 28%),
                 linear-gradient(225deg, rgba(39, 214, 196, 0.16), transparent 30%),
                 var(--panel);
-            backdrop-filter: blur(14px);
-            box-shadow: var(--shadow);
         }
 
         .hero::after {
@@ -106,6 +120,14 @@
             line-height: 0.92;
         }
 
+        h2 {
+            font-size: clamp(2rem, 4vw, 2.8rem);
+        }
+
+        h3 {
+            font-size: 1.15rem;
+        }
+
         .tagline {
             max-width: 58ch;
             margin: 18px 0 0;
@@ -114,26 +136,29 @@
             line-height: 1.65;
         }
 
-        .hero-meta {
+        .hero-meta,
+        .controls,
+        .cta-row {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
+        }
+
+        .hero-meta {
             margin-top: 22px;
         }
 
-        .pill {
+        .pill,
+        .control-chip {
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 999px;
             padding: 10px 14px;
             background: rgba(255, 255, 255, 0.04);
             color: var(--muted);
-            font: 500 0.85rem/1.2 "IBM Plex Mono", monospace;
+            font: 500 0.84rem/1.2 "IBM Plex Mono", monospace;
         }
 
         .cta-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
             margin-top: 28px;
         }
 
@@ -150,7 +175,11 @@
         }
 
         .cta:hover,
-        .cta:focus-visible {
+        .cta:focus-visible,
+        .shot-button:hover,
+        .shot-button:focus-visible,
+        .download-card:hover,
+        .download-card:focus-visible {
             transform: translateY(-1px);
         }
 
@@ -166,27 +195,51 @@
             color: var(--ink);
         }
 
+        .fact-grid,
         .grid {
             display: grid;
             gap: 20px;
             margin-top: 22px;
         }
 
-        .comparison-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+        .fact-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .download-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+        .fact-card,
+        .comparison-card,
+        .manual-card,
+        .download-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 22px;
+            background: var(--panel-soft);
+        }
+
+        .fact-card {
+            padding: 18px;
+        }
+
+        .fact-label {
+            color: var(--accent-cool);
+            font: 500 0.78rem/1.2 "IBM Plex Mono", monospace;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .fact-value {
+            margin-top: 10px;
+            color: var(--ink);
+            font-size: 1.1rem;
+            font-weight: 400;
+            line-height: 1.45;
         }
 
         .section {
             margin-top: 22px;
-            border: 1px solid var(--line);
-            border-radius: 24px;
             padding: 24px;
             background: var(--panel-strong);
-            box-shadow: var(--shadow);
         }
 
         .section-head {
@@ -204,26 +257,15 @@
             line-height: 1.65;
         }
 
-        .comparison-card,
-        .download-card,
-        .manual-card {
-            position: relative;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.03);
+        .comparison-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: start;
         }
 
         .comparison-card {
             padding: 14px;
-        }
-
-        .comparison-card img {
-            display: block;
-            width: 100%;
-            height: auto;
-            border-radius: 14px;
-            background: #000;
+            max-width: 460px;
+            margin: 0 auto;
         }
 
         .card-label {
@@ -249,6 +291,35 @@
             color: #cbfff7;
         }
 
+        .shot-button {
+            display: block;
+            width: 100%;
+            padding: 0;
+            border: 0;
+            background: none;
+            cursor: zoom-in;
+            transition: transform 140ms ease;
+        }
+
+        .shot-frame {
+            overflow: hidden;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #000;
+        }
+
+        .shot-button img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .shot-hint {
+            margin: 10px 4px 0;
+            color: var(--muted);
+            font: 500 0.78rem/1.4 "IBM Plex Mono", monospace;
+        }
+
         .manual-grid {
             grid-template-columns: 1.2fr 0.8fr;
         }
@@ -268,18 +339,11 @@
         }
 
         .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
             margin-top: 18px;
         }
 
-        .control-chip {
-            border-radius: 999px;
-            padding: 9px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--muted);
-            font: 500 0.82rem/1.2 "IBM Plex Mono", monospace;
+        .download-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .download-card {
@@ -292,7 +356,6 @@
 
         .download-card:hover,
         .download-card:focus-visible {
-            transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.18);
             background: rgba(255, 255, 255, 0.05);
         }
@@ -303,23 +366,28 @@
             margin-bottom: 16px;
         }
 
-        .download-card h3 {
-            font-size: 1.2rem;
-        }
-
         .download-card p {
             margin: 10px 0 0;
             color: var(--muted);
             line-height: 1.6;
         }
 
-        .download-card strong {
+        .download-note {
             display: inline-block;
             margin-top: 16px;
             color: var(--accent-warm);
-            font: 500 0.86rem/1.3 "IBM Plex Mono", monospace;
+            font: 500 0.84rem/1.3 "IBM Plex Mono", monospace;
             letter-spacing: 0.08em;
             text-transform: uppercase;
+        }
+
+        .download-meta {
+            margin-top: 20px;
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted);
+            line-height: 1.65;
         }
 
         .footer {
@@ -338,7 +406,50 @@
             color: var(--ink);
         }
 
+        .shot-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background: rgba(8, 8, 8, 0.88);
+            backdrop-filter: blur(10px);
+        }
+
+        .shot-modal[hidden] {
+            display: none;
+        }
+
+        .shot-modal-panel {
+            width: min(100%, 980px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 18px;
+            background: rgba(12, 12, 12, 0.96);
+            box-shadow: var(--shadow);
+        }
+
+        .shot-modal-panel img {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 16px;
+            background: #000;
+        }
+
+        .shot-modal-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            color: var(--muted);
+            font: 500 0.8rem/1.4 "IBM Plex Mono", monospace;
+        }
+
         @media (max-width: 980px) {
+            .fact-grid,
             .comparison-grid,
             .manual-grid,
             .download-grid {
@@ -346,11 +457,13 @@
             }
 
             .section-head,
-            .footer {
+            .footer,
+            .shot-modal-meta {
                 display: block;
             }
 
-            .footer p + p {
+            .footer p + p,
+            .shot-modal-meta span + span {
                 margin-top: 10px;
             }
         }
@@ -362,7 +475,7 @@
             <p class="eyebrow">Processing + ffmpeg + bundled video runtimes</p>
             <h1>Video Glitcher</h1>
             <p class="tagline">
-                Load a clip, push it into controlled failure, and export the result as a glitched MP4.
+                Load a clip, break it on purpose, and export the result as a glitched MP4.
                 The app runs as a Processing desktop sketch with realtime preview, presets, and frame-by-frame ffmpeg export.
             </p>
             <div class="hero-meta">
@@ -372,9 +485,23 @@
                 <span class="pill">Java 17+</span>
             </div>
             <div class="cta-row">
-                <a class="cta cta-primary" href="#downloads">Download Latest</a>
+                <a class="cta cta-primary" href="#download">Download</a>
                 <a class="cta cta-secondary" href="https://github.com/krahd/video_glitcher">View Repository</a>
-                <a class="cta cta-secondary" href="https://github.com/krahd/video_glitcher/releases/latest">Latest Release</a>
+                <a class="cta cta-secondary" href="https://github.com/krahd/video_glitcher/releases">Release Page</a>
+            </div>
+            <div class="fact-grid">
+                <article class="fact-card">
+                    <div class="fact-label">Status</div>
+                    <div class="fact-value">Live on GitHub Pages and ready for local export testing.</div>
+                </article>
+                <article class="fact-card">
+                    <div class="fact-label">Clients</div>
+                    <div class="fact-value">Portable desktop bundles for macOS Apple Silicon, Linux x64, and Windows x64.</div>
+                </article>
+                <article class="fact-card">
+                    <div class="fact-label">Releases</div>
+                    <div class="fact-value">Static GitHub release links are used here because the public site cannot rely on anonymous GitHub API calls for this repo.</div>
+                </article>
             </div>
         </section>
 
@@ -384,17 +511,28 @@
                     <h2>Before / After</h2>
                     <p class="section-copy">
                         Left: the unprocessed source loop. Right: the exported result produced by the app using the Extreme preset.
+                        Click either image to view a larger version, then press <code>Esc</code> or click anywhere to close it.
                     </p>
                 </div>
             </div>
             <div class="grid comparison-grid">
                 <article class="comparison-card">
                     <span class="card-label cool">Source Clip</span>
-                    <img src="assets/video-glitcher-source.gif" alt="Original unprocessed source clip">
+                    <button class="shot-button" type="button" data-shot-label="Source Clip" data-shot-src="assets/video-glitcher-source.gif">
+                        <span class="shot-frame">
+                            <img src="assets/video-glitcher-source.gif" alt="Original unprocessed source clip">
+                        </span>
+                    </button>
+                    <p class="shot-hint">Click to expand</p>
                 </article>
                 <article class="comparison-card">
                     <span class="card-label hot">Exported Glitch</span>
-                    <img src="assets/video-glitcher-glitched.gif" alt="Glitched clip exported from Video Glitcher">
+                    <button class="shot-button" type="button" data-shot-label="Exported Glitch" data-shot-src="assets/video-glitcher-glitched.gif">
+                        <span class="shot-frame">
+                            <img src="assets/video-glitcher-glitched.gif" alt="Glitched clip exported from Video Glitcher">
+                        </span>
+                    </button>
+                    <p class="shot-hint">Click to expand</p>
                 </article>
             </div>
         </section>
@@ -402,9 +540,9 @@
         <section class="section">
             <div class="section-head">
                 <div>
-                    <h2>Quick Start</h2>
+                    <h2>Instructions</h2>
                     <p class="section-copy">
-                        The workflow is intentionally short: load, tune, preview, export. `ffmpeg` must be available on your system `PATH` for MP4 export.
+                        The workflow stays short: load, tune, preview, export. <code>ffmpeg</code> must be available on your system <code>PATH</code> for MP4 export.
                     </p>
                 </div>
             </div>
@@ -434,12 +572,12 @@
             </div>
         </section>
 
-        <section class="section" id="downloads">
+        <section class="section" id="download">
             <div class="section-head">
                 <div>
-                    <h2>Downloads</h2>
+                    <h2>Download</h2>
                     <p class="section-copy">
-                        Latest published release bundles for each desktop platform, plus the source bundles from GitHub.
+                        Static release links are shown directly here. The previous anonymous GitHub API lookup was removed because this repo returns 404 for public API requests, which caused the noisy release error in the page.
                     </p>
                 </div>
             </div>
@@ -453,7 +591,7 @@
                     </svg>
                     <h3>macOS Apple Silicon</h3>
                     <p>Portable ZIP bundle with the app jar, libraries, launcher script, and bundled video natives.</p>
-                    <strong>Download ZIP</strong>
+                    <span class="download-note">Download ZIP</span>
                 </a>
                 <a class="download-card" href="https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-linux-amd64.zip">
                     <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -467,7 +605,7 @@
                     </svg>
                     <h3>Linux x64</h3>
                     <p>Release bundle with the launcher script, jars, and the matching Linux video runtime files.</p>
-                    <strong>Download ZIP</strong>
+                    <span class="download-note">Download ZIP</span>
                 </a>
                 <a class="download-card" href="https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-windows-amd64.zip">
                     <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -475,9 +613,9 @@
                     </svg>
                     <h3>Windows x64</h3>
                     <p>Portable ZIP build with the Windows launcher, jars, and bundled video dependencies.</p>
-                    <strong>Download ZIP</strong>
+                    <span class="download-note">Download ZIP</span>
                 </a>
-                <a class="download-card" href="https://github.com/krahd/video_glitcher/releases/latest">
+                <a class="download-card" href="https://github.com/krahd/video_glitcher/releases">
                     <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
                         <rect x="14" y="10" width="36" height="44" rx="8" stroke="#f6f1e8" stroke-width="4"/>
                         <path d="M28 18h8M28 27h8M28 36h8M28 45h8" stroke="#f6f1e8" stroke-width="4" stroke-linecap="round"/>
@@ -486,10 +624,13 @@
                         <rect x="24" y="33" width="4" height="6" rx="2" fill="#ffce52"/>
                         <rect x="36" y="42" width="4" height="6" rx="2" fill="#ff5a36"/>
                     </svg>
-                    <h3>Source Bundles</h3>
-                    <p>Open the latest release page for GitHub’s generated source archives and the tagged release notes.</p>
-                    <strong>Open Release Page</strong>
+                    <h3>Release Page</h3>
+                    <p>Open the GitHub releases page for source archives, notes, and the same direct asset links shown here.</p>
+                    <span class="download-note">Open Releases</span>
                 </a>
+            </div>
+            <div class="download-meta">
+                If your browser or network context cannot reach the GitHub release URLs directly, open the release page first and download from there.
             </div>
             <div class="footer">
                 <p>Repository: <a href="https://github.com/krahd/video_glitcher">github.com/krahd/video_glitcher</a></p>
@@ -497,5 +638,61 @@
             </div>
         </section>
     </main>
+
+    <div class="shot-modal" data-shot-modal hidden>
+        <div class="shot-modal-panel">
+            <img src="" alt="" data-shot-modal-image>
+            <div class="shot-modal-meta">
+                <span data-shot-modal-label></span>
+                <span>Press Esc or click anywhere to close</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const modal = document.querySelector("[data-shot-modal]");
+            const modalImage = document.querySelector("[data-shot-modal-image]");
+            const modalLabel = document.querySelector("[data-shot-modal-label]");
+            const shotButtons = document.querySelectorAll("[data-shot-src]");
+
+            if (!modal || !modalImage || !modalLabel || shotButtons.length === 0) {
+                return;
+            }
+
+            function closeModal() {
+                modal.hidden = true;
+                modalImage.removeAttribute("src");
+                modalImage.removeAttribute("alt");
+                modalLabel.textContent = "";
+                document.body.classList.remove("modal-open");
+            }
+
+            function openModal(button) {
+                const src = button.getAttribute("data-shot-src");
+                const label = button.getAttribute("data-shot-label") || "Preview";
+                const image = button.querySelector("img");
+                const alt = image ? image.getAttribute("alt") || label : label;
+
+                modalImage.src = src;
+                modalImage.alt = alt;
+                modalLabel.textContent = label;
+                modal.hidden = false;
+                document.body.classList.add("modal-open");
+            }
+
+            shotButtons.forEach((button) => {
+                button.addEventListener("click", () => openModal(button));
+            });
+
+            modal.addEventListener("click", closeModal);
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && !modal.hidden) {
+                    closeModal();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
