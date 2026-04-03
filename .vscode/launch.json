@@ -24,6 +24,16 @@
             "name": "Run VideoGlitcher (macOS Intel)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "preLaunchTask": "Build VideoGlitcher",
+            "cwd": "${workspaceFolder}",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/lib/core.jar",
+                "${workspaceFolder}/lib/controlP5/library/*",
+                "${workspaceFolder}/lib/processing-opengl/library/*",
+                "${workspaceFolder}/lib/video/library/*",
+                "${workspaceFolder}/lib/videoExport/library/*"
+            ],
             "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/macos-x86_64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/macos-x86_64/gstreamer-1.0"
         },
         {
@@ -31,6 +41,16 @@
             "name": "Run VideoGlitcher (Windows x64)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "preLaunchTask": "Build VideoGlitcher (Windows x64)",
+            "cwd": "${workspaceFolder}",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/lib/core.jar",
+                "${workspaceFolder}/lib/controlP5/library/*",
+                "${workspaceFolder}/lib/processing-opengl/library/*",
+                "${workspaceFolder}/lib/video/library/*",
+                "${workspaceFolder}/lib/videoExport/library/*"
+            ],
             "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/windows-amd64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/windows-amd64/gstreamer-1.0"
         },
         {
@@ -38,6 +58,16 @@
             "name": "Run VideoGlitcher (Linux x64 bundled)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "preLaunchTask": "Build VideoGlitcher (Linux x64)",
+            "cwd": "${workspaceFolder}",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/lib/core.jar",
+                "${workspaceFolder}/lib/controlP5/library/*",
+                "${workspaceFolder}/lib/processing-opengl/library/*",
+                "${workspaceFolder}/lib/video/library/*",
+                "${workspaceFolder}/lib/videoExport/library/*"
+            ],
             "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/linux-amd64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/linux-amd64/gstreamer-1.0"
         }
     ]

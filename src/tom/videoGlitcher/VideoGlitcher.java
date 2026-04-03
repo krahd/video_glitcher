@@ -12,15 +12,19 @@ import java.io.File;
 public class VideoGlitcher extends PApplet {
 
     public static void main(String[] args) {
-        PApplet.main(VideoGlitcher.class.getName());
+        PApplet.main(new String[] { "--present", VideoGlitcher.class.getName() });
     }
 
     private Movie video;
     private ControlP5 cp5;
     private VideoExport videoExport;
+    private File currentVideoFile;
 
     private boolean movieReady = false;
     private boolean exporting = false;
+    private boolean paused = false;
+    private boolean glitchEnabled = false;
+    private boolean hasLoadedFirstVideo = false;
     private String exportFilename = "glitched_export.mp4";
     private String currentVideoPath = "";
     private String currentVideoName = "No video loaded";
@@ -63,6 +67,7 @@ public class VideoGlitcher extends PApplet {
     private int calmFramesLeft = 0;
 
     private PImage frozenFrame = null;
+    private PImage pausedFrame = null;
     private int freezeFramesLeft = 0;
     private PImage previousFrame = null;
 
@@ -70,8 +75,12 @@ public class VideoGlitcher extends PApplet {
     private float offsetX = 0;
     private float offsetY = 0;
 
+    private Button pausePlayButton;
+    private Button glitchToggleButton;
     private DropdownList presetList;
     private Textlabel statusLabel;
+
+    private boolean triedVideoUriFallback = false;
 
     private int panelX = 12;
     private int panelY = 12;
@@ -80,9 +89,9 @@ public class VideoGlitcher extends PApplet {
 
     private int guiX = panelX + 14;
     private int guiY = panelY + 14;
-    private int sliderW = 220;
+    private int sliderW = 180;
     private int sliderH = 16;
-    private int labelX = guiX + sliderW + 16;
+    private int labelX = guiX + sliderW + 72;
     private int rowGap = 24;
 
     @Override
@@ -100,17 +109,18 @@ public class VideoGlitcher extends PApplet {
         setupGui();
         applyPreset("Cinematic");
         calmFramesLeft = (int) random(calmMinFrames, calmMaxFrames + 1);
-
-        promptForVideo();
     }
 
     @Override
     public void draw() {
         background(0);
 
+        if (video != null && !paused && video.available()) {
+            updateMovieFrame(video);
+        }
+
         normalizeRanges();
-        updateGlitchState();
-        updateCameraJitter();
+        updatePlaybackEffects();
 
         pushMatrix();
         translate(offsetX, offsetY);
@@ -119,7 +129,9 @@ public class VideoGlitcher extends PApplet {
         if (!movieReady || video == null) {
             drawNoVideoScreen();
         } else {
-            if ((freezeFramesLeft > 0 || freezeManual) && frozenFrame != null) {
+            if (paused && pausedFrame != null) {
+                image(pausedFrame, drawX, drawY, drawW, drawH);
+            } else if ((freezeFramesLeft > 0 || freezeManual) && frozenFrame != null) {
                 image(frozenFrame, drawX, drawY, drawW, drawH);
                 if (!freezeManual && freezeFramesLeft > 0) {
                     freezeFramesLeft--;
@@ -128,14 +140,18 @@ public class VideoGlitcher extends PApplet {
                 image(video, drawX, drawY, drawW, drawH);
             }
 
-            if (glitchActive) {
+            if (glitchEnabled && !paused && glitchActive) {
                 applyRandomGlitchStack();
-            } else {
+            } else if (glitchEnabled && !paused) {
                 applySubtleFilmDamage();
             }
         }
 
         popMatrix();
+
+        if (movieReady && video != null) {
+            drawVideoMask();
+        }
 
         previousFrame = get();
 
@@ -158,7 +174,7 @@ public class VideoGlitcher extends PApplet {
             glitchIntensity = max(0.1f, glitchIntensity - 0.1f);
             syncGuiValues();
         } else if (key == ' ') {
-            showGUI = !showGUI;
+            togglePausePlay();
         } else if (key == 'l' || key == 'L') {
             promptForVideo();
         } else if (key == 'f' || key == 'F') {
@@ -168,6 +184,10 @@ public class VideoGlitcher extends PApplet {
             }
         } else if (key == 'h' || key == 'H') {
             showHUD = !showHUD;
+        } else if (key == 'u' || key == 'U') {
+            showGUI = !showGUI;
+        } else if (key == 'g' || key == 'G') {
+            toggleGlitching();
         } else if (key == 'e' || key == 'E') {
             if (exporting)
                 stopExport();
@@ -178,14 +198,53 @@ public class VideoGlitcher extends PApplet {
         }
     }
 
-    public void movieEvent(Movie m) {
-        m.read();
+    @Override
+    public void mousePressed() {
+        if (video == null && !movieReady && !selectingVideo && !isPointerOverGui()) {
+            promptForVideo();
+        }
+    }
 
-        if (!movieReady) {
+    public void movieEvent(Movie m) {
+        if (!paused) {
+            updateMovieFrame(m);
+        }
+    }
+
+    private void updateMovieFrame(Movie movie) {
+        movie.read();
+
+        if (!movieReady && movie.width > 0 && movie.height > 0) {
             movieReady = true;
             computeVideoFit();
             statusLabel.setText("Status: previewing " + currentVideoName);
+
+            if (!hasLoadedFirstVideo) {
+                hasLoadedFirstVideo = true;
+                glitchEnabled = true;
+                updateGlitchButton();
+            }
+
+            if (paused) {
+                pausedFrame = movie.get();
+                movie.pause();
+                statusLabel.setText("Status: paused " + currentVideoName);
+                updatePausePlayButton();
+            }
         }
+    }
+
+    private void updatePlaybackEffects() {
+        if (!movieReady || video == null || paused || !glitchEnabled) {
+            glitchActive = false;
+            zoomJitter = 1.0f;
+            offsetX = 0;
+            offsetY = 0;
+            return;
+        }
+
+        updateGlitchState();
+        updateCameraJitter();
     }
 
     private void setupGui() {
@@ -256,19 +315,31 @@ public class VideoGlitcher extends PApplet {
 
         Button bLoad = cp5.addButton("loadVideo")
                 .setPosition(x, y)
-                .setSize(120, 30)
+            .setSize(72, 30)
                 .setLabel("Load Video");
         bLoad.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
+        pausePlayButton = cp5.addButton("pausePlay")
+            .setPosition(x + 80, y)
+            .setSize(72, 30)
+            .setLabel("Play");
+        pausePlayButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+
+        glitchToggleButton = cp5.addButton("toggleGlitching")
+            .setPosition(x + 160, y)
+            .setSize(72, 30)
+            .setLabel("Glitch");
+        glitchToggleButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+
         Button b1 = cp5.addButton("startExport")
-                .setPosition(x + 132, y)
-                .setSize(120, 30)
+            .setPosition(x + 240, y)
+            .setSize(72, 30)
                 .setLabel("Export Start");
         b1.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
         Button b2 = cp5.addButton("stopExport")
-                .setPosition(x + 264, y)
-                .setSize(120, 30)
+            .setPosition(x + 320, y)
+            .setSize(72, 30)
                 .setLabel("Export Stop");
         b2.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
@@ -277,6 +348,9 @@ public class VideoGlitcher extends PApplet {
         statusLabel = cp5.addTextlabel("status")
                 .setPosition(x, y)
                 .setText("Status: no video loaded");
+
+        updatePausePlayButton();
+        updateGlitchButton();
     }
 
     private void addSliderRow(String name, int x, int y, int w, int h, float minV, float maxV, float value,
@@ -288,7 +362,7 @@ public class VideoGlitcher extends PApplet {
                 .setValue(value);
 
         s.getCaptionLabel().setVisible(false);
-        s.getValueLabel().align(ControlP5.RIGHT_OUTSIDE, ControlP5.CENTER).setPaddingX(8);
+        s.getValueLabel().align(ControlP5.RIGHT_OUTSIDE, ControlP5.CENTER).setPaddingX(6);
 
         cp5.addTextlabel("lbl_" + name)
                 .setPosition(labelX, y + 1)
@@ -354,6 +428,16 @@ public class VideoGlitcher extends PApplet {
         promptForVideo();
     }
 
+    public void pausePlay() {
+        togglePausePlay();
+    }
+
+    public void toggleGlitching() {
+        glitchEnabled = !glitchEnabled;
+        statusLabel.setText("Status: glitching " + (glitchEnabled ? "enabled" : "disabled"));
+        updateGlitchButton();
+    }
+
     private void promptForVideo() {
         if (selectingVideo)
             return;
@@ -369,12 +453,31 @@ public class VideoGlitcher extends PApplet {
             return;
         }
 
-        loadVideoFile(selection.getAbsolutePath());
+        loadVideoFile(selection);
     }
 
-    private void loadVideoFile(String path) {
+    private void loadVideoFile(File file) {
         stopExport();
-
+        releaseVideo();
+        
+        movieReady = false;
+        frozenFrame = null;
+        pausedFrame = null;
+        previousFrame = null;
+        freezeFramesLeft = 0;
+        freezeManual = false;
+        triedVideoUriFallback = false;
+        
+        currentVideoFile = file;
+        currentVideoPath = file.getAbsolutePath();
+        currentVideoName = file.getName();
+        exportFilename = makeExportFilename(currentVideoName);
+        
+        startMovie(currentVideoPath, "path");
+        updatePausePlayButton();
+    }
+    
+    private void releaseVideo() {
         if (video != null) {
             try {
                 video.stop();
@@ -382,23 +485,27 @@ public class VideoGlitcher extends PApplet {
             }
             video = null;
         }
+    }
 
+    private void startMovie(String source, String sourceLabel) {
+        releaseVideo();
         movieReady = false;
-        frozenFrame = null;
-        previousFrame = null;
-        freezeFramesLeft = 0;
-        freezeManual = false;
-
-        currentVideoPath = path;
-        currentVideoName = new File(path).getName();
-        exportFilename = makeExportFilename(currentVideoName);
-
-        println("Loading video: " + currentVideoPath);
-
-        video = new Movie(this, currentVideoPath);
-        video.loop();
-
-        statusLabel.setText("Status: loading " + currentVideoName);
+        
+        println("Loading video " + sourceLabel + ": " + source);
+        try {
+            video = new Movie(this, source);
+            video.loop();
+            statusLabel.setText("Status: loading " + currentVideoName + " via " + sourceLabel);
+        } catch (RuntimeException exception) {
+            video = null;
+            println("Failed to load video via " + sourceLabel + ": " + exception.getMessage());
+            if (!triedVideoUriFallback && currentVideoFile != null && "path".equals(sourceLabel)) {
+                triedVideoUriFallback = true;
+                startMovie(currentVideoFile.toURI().toString(), "file URI");
+            } else {
+                statusLabel.setText("Status: failed to load " + currentVideoName);
+            }
+        }
     }
 
     private String makeExportFilename(String sourceName) {
@@ -432,10 +539,28 @@ public class VideoGlitcher extends PApplet {
         text("No video loaded", width * 0.5f, height * 0.5f - 20);
 
         textSize(18);
-        text("Click 'Load Video' or press L", width * 0.5f, height * 0.5f + 20);
+        text("Click anywhere or press L to load a video", width * 0.5f, height * 0.5f + 20);
 
         if (selectingVideo) {
             text("File dialog open...", width * 0.5f, height * 0.5f + 50);
+        }
+    }
+
+    private void drawVideoMask() {
+        noStroke();
+        fill(0);
+
+        if (drawY > 0) {
+            rect(0, 0, width, drawY);
+        }
+        if (drawY + drawH < height) {
+            rect(0, drawY + drawH, width, height - (drawY + drawH));
+        }
+        if (drawX > 0) {
+            rect(0, drawY, drawX, drawH);
+        }
+        if (drawX + drawW < width) {
+            rect(drawX + drawW, drawY, width - (drawX + drawW), drawH);
         }
     }
 
@@ -456,6 +581,15 @@ public class VideoGlitcher extends PApplet {
         hint(ENABLE_DEPTH_TEST);
     }
 
+    private boolean isPointerOverGui() {
+        if (!showGUI) {
+            return false;
+        }
+
+        return mouseX >= panelX && mouseX <= panelX + panelW
+                && mouseY >= panelY && mouseY <= panelY + panelH;
+    }
+
     private void drawHUD() {
         fill(255, 220);
         noStroke();
@@ -468,13 +602,15 @@ public class VideoGlitcher extends PApplet {
         String mode = glitchActive ? "GLITCH" : "CALM";
         String exp = exporting ? "EXPORTING" : "PREVIEW";
         String gui = showGUI ? "GUI ON" : "GUI OFF";
+        String playback = paused ? "PAUSED" : "PLAYING";
 
         text(
                 "Video: " + currentVideoName +
                         "   Mode: " + mode +
+                "   Playback: " + playback +
                         "   Output: " + exp +
                         "   " + gui +
-                        "   SPACE gui   L load   F freeze   H HUD   E export",
+                    "   SPACE play/pause   G glitch   L load   F freeze   H hud   U gui   E export",
                 20, height - 18);
     }
 
@@ -915,8 +1051,10 @@ public class VideoGlitcher extends PApplet {
         if (exporting || !movieReady || video == null)
             return;
 
+        paused = false;
         video.jump(0);
         video.play();
+        updatePausePlayButton();
 
         videoExport = new VideoExport(this, exportFilename);
         videoExport.setFrameRate(FPS);
@@ -939,5 +1077,37 @@ public class VideoGlitcher extends PApplet {
 
         statusLabel.setText("Status: export finished");
         println("Export finished");
+    }
+
+    private void togglePausePlay() {
+        if (video == null)
+            return;
+
+        paused = !paused;
+        if (paused) {
+            pausedFrame = video.get();
+            video.pause();
+            statusLabel.setText("Status: paused " + currentVideoName);
+        } else {
+            pausedFrame = null;
+            video.play();
+            statusLabel.setText("Status: previewing " + currentVideoName);
+        }
+
+        updatePausePlayButton();
+    }
+
+    private void updatePausePlayButton() {
+        if (pausePlayButton == null)
+            return;
+
+        pausePlayButton.setLabel(video == null || paused ? "Play" : "Pause");
+    }
+
+    private void updateGlitchButton() {
+        if (glitchToggleButton == null)
+            return;
+
+        glitchToggleButton.setLabel(glitchEnabled ? "Glitch On" : "Glitch Off");
     }
 }
