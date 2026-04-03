@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build VideoGlitcher",
+            "type": "shell",
+            "command": "javac -cp \"lib/core.jar:lib/controlP5/library/*:lib/video/library/*:lib/videoExport/library/*\" -d bin src/tom/videoGlitcher/VideoGlitcher.java",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$javac"
+        },
+        {
+            "label": "Run VideoGlitcher (macOS Apple Silicon)",
+            "type": "shell",
+            "command": "java -cp \"bin:lib/core.jar:lib/controlP5/library/*:lib/video/library/*:lib/videoExport/library/*\" -Dgstreamer.library.path=\"${workspaceFolder}/lib/video/library/macos-aarch64\" -Dgstreamer.plugin.path=\"${workspaceFolder}/lib/video/library/macos-aarch64/gstreamer-1.0\" tom.videoGlitcher.VideoGlitcher",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Build VideoGlitcher",
+            "problemMatcher": []
+        }
+    ]
+}

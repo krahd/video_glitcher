@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "java",
+            "name": "Run VideoGlitcher (macOS Apple Silicon)",
+            "request": "launch",
+            "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "preLaunchTask": "Build VideoGlitcher",
+            "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/macos-aarch64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/macos-aarch64/gstreamer-1.0"
+        },
+        {
+            "type": "java",
+            "name": "Run VideoGlitcher (macOS Intel)",
+            "request": "launch",
+            "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/macos-x86_64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/macos-x86_64/gstreamer-1.0"
+        },
+        {
+            "type": "java",
+            "name": "Run VideoGlitcher (Windows x64)",
+            "request": "launch",
+            "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/windows-amd64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/windows-amd64/gstreamer-1.0"
+        },
+        {
+            "type": "java",
+            "name": "Run VideoGlitcher (Linux x64 bundled)",
+            "request": "launch",
+            "mainClass": "tom.videoGlitcher.VideoGlitcher",
+            "vmArgs": "-Dgstreamer.library.path=${workspaceFolder}/lib/video/library/linux-amd64 -Dgstreamer.plugin.path=${workspaceFolder}/lib/video/library/linux-amd64/gstreamer-1.0"
+        }
+    ]
+}
