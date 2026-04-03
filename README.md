@@ -1,12 +1,12 @@
 # Video Glitcher
 
-![Animated preview of Video Glitcher using the Boxy sample clip](assets/video-glitcher-demo.gif)
-
-_Real demo loop rendered from the Boxy sample clip used for release-page preview assets._
+![Animated preview of a glitched Video Glitcher export](assets/video-glitcher-demo.gif)
 
 Video Glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and can export the result as an MP4.
 
-The repository is self-contained and includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows.
+Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_glitcher/)
+
+The repository is self-contained and includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows. Export uses `ffmpeg` from your system `PATH`.
 
 ## Releases
 
@@ -43,7 +43,7 @@ SHA-256 checksums for `v1.0.3`:
 - `.vscode/launch.json`: debug launch configs for macOS, Windows, and Linux
 - `.vscode/tasks.json`: build and run tasks for VS Code
 - `.github/workflows/release.yml`: automated cross-platform release bundles
-- `lib/`: bundled Processing, video, ControlP5, VideoExport, and Processing OpenGL libraries
+- `lib/`: bundled Processing, video, ControlP5, and Processing OpenGL libraries
 - `bin/`: compiled class output
 - `packaging/portable/`: launcher scripts for the portable cross-platform bundle
 - `dist/`: generated packaging output, ignored by git
@@ -52,6 +52,7 @@ SHA-256 checksums for `v1.0.3`:
 
 - Java 17 or newer
 - VS Code with Java support
+- `ffmpeg` on your `PATH` if you want MP4 export
 - Native video runtime files are already vendored for `macos-aarch64`, `macos-x86_64`, `linux-amd64`, and `windows-amd64`
 
 ## Build
@@ -59,13 +60,60 @@ SHA-256 checksums for `v1.0.3`:
 Build from the project root with:
 
 ```sh
-javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*" -d bin src/tom/videoGlitcher/VideoGlitcher.java
+javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" -d bin src/tom/videoGlitcher/VideoGlitcher.java src/tom/videoGlitcher/VideoGlitcherLogic.java src/tom/videoGlitcher/FfmpegVideoExporter.java
 ```
 
 In VS Code, run the default build task:
 
 - `Terminal` -> `Run Build Task...`
 - Choose `Build VideoGlitcher`
+
+## Test
+
+Current automated coverage targets the pure Java logic that was extracted from the fullscreen Processing sketch. It covers export filename generation, video-fit calculations, range normalization, glitch state transitions, and ffmpeg export setup.
+
+Run the logic tests from the project root with:
+
+```sh
+mkdir -p test-bin && javac -d test-bin src/tom/videoGlitcher/VideoGlitcherLogic.java src/tom/videoGlitcher/FfmpegVideoExporter.java test/tom/videoGlitcher/VideoGlitcherLogicTest.java && java -cp test-bin tom.videoGlitcher.VideoGlitcherLogicTest
+```
+
+In VS Code, you can also run:
+
+- `Terminal` -> `Run Task...`
+- Choose `Test VideoGlitcher Logic`
+
+### Smoke validation
+
+The app also supports a non-interactive smoke mode for local runtime validation on macOS. Smoke mode runs in a normal window instead of Processing present mode and exits on its own.
+
+Available tasks:
+
+- `Smoke Test VideoGlitcher Startup (macOS Apple Silicon)`
+- `Smoke Test VideoGlitcher Load (macOS Apple Silicon)`
+- `Smoke Test VideoGlitcher Export (macOS Apple Silicon)`
+
+The load and export smoke tasks generate a short sample clip with `ffmpeg` and launch the app with `--smoke-test`. The load task validates the video pipeline without requiring interaction. The export task exercises the direct ffmpeg-backed export path and exits non-zero if export initialization or frame piping fails.
+
+You can also invoke smoke mode directly from the terminal:
+
+```sh
+java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
+  -Dgstreamer.library.path="$PWD/lib/video/library/macos-aarch64" \
+  -Dgstreamer.plugin.path="$PWD/lib/video/library/macos-aarch64/gstreamer-1.0" \
+  tom.videoGlitcher.VideoGlitcher --smoke-test --smoke-frames=45
+```
+
+To auto-load a file and exercise export:
+
+```sh
+java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
+  -Dgstreamer.library.path="$PWD/lib/video/library/macos-aarch64" \
+  -Dgstreamer.plugin.path="$PWD/lib/video/library/macos-aarch64/gstreamer-1.0" \
+  tom.videoGlitcher.VideoGlitcher --smoke-test --video=/absolute/path/to/sample.mp4 --auto-export --smoke-frames=180 --export-frames=48
+```
+
+The rest of the app still requires manual validation because runtime behavior depends on a fullscreen `PApplet`, native video libraries, and live GUI interaction.
 
 ## Run In VS Code
 
@@ -129,7 +177,7 @@ Each debug launch is configured with the correct bundled libraries and native vi
 ## Run From Terminal
 
 ```sh
-java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*" \
+java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
   -Dgstreamer.library.path="$PWD/lib/video/library/macos-aarch64" \
   -Dgstreamer.plugin.path="$PWD/lib/video/library/macos-aarch64/gstreamer-1.0" \
   tom.videoGlitcher.VideoGlitcher
@@ -161,6 +209,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 
 - The app is written as plain Java, so Processing types that are auto-imported in `.pde` sketches must be imported explicitly in the Java source.
 - Video playback depends on the bundled Processing video library and native GStreamer files matching your platform.
+- MP4 export depends on `ffmpeg` being installed and available on your `PATH`.
 - The macOS packaging task builds an `.app` image with the required jars and bundled Apple Silicon video natives.
 - Pushing a release tag like `v1.0.4` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
 
