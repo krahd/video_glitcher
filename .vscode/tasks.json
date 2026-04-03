@@ -4,7 +4,7 @@
         {
             "label": "Build VideoGlitcher",
             "type": "shell",
-            "command": "javac -cp \"lib/core.jar:lib/controlP5/library/*:lib/video/library/*:lib/videoExport/library/*\" -d bin src/tom/videoGlitcher/VideoGlitcher.java",
+            "command": "javac -cp \"lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*\" -d bin src/tom/videoGlitcher/VideoGlitcher.java",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -17,7 +17,27 @@
         {
             "label": "Run VideoGlitcher (macOS Apple Silicon)",
             "type": "shell",
-            "command": "java -cp \"bin:lib/core.jar:lib/controlP5/library/*:lib/video/library/*:lib/videoExport/library/*\" -Dgstreamer.library.path=\"${workspaceFolder}/lib/video/library/macos-aarch64\" -Dgstreamer.plugin.path=\"${workspaceFolder}/lib/video/library/macos-aarch64/gstreamer-1.0\" tom.videoGlitcher.VideoGlitcher",
+            "command": "java -cp \"bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*\" -Dgstreamer.library.path=\"${workspaceFolder}/lib/video/library/macos-aarch64\" -Dgstreamer.plugin.path=\"${workspaceFolder}/lib/video/library/macos-aarch64/gstreamer-1.0\" tom.videoGlitcher.VideoGlitcher",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Build VideoGlitcher",
+            "problemMatcher": []
+        },
+        {
+            "label": "Package VideoGlitcher (macOS app)",
+            "type": "shell",
+            "command": "rm -rf dist/package-input dist/VideoGlitcher.app && mkdir -p dist/package-input && jar --create --file dist/package-input/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/package-input/ && cp lib/controlP5/library/*.jar dist/package-input/ && cp lib/processing-opengl/library/*.jar dist/package-input/ && cp lib/videoExport/library/*.jar dist/package-input/ && cp lib/video/library/*.jar dist/package-input/ && cp -R lib/video/library/macos-aarch64 dist/package-input/video-macos-aarch64 && jpackage --type app-image --name VideoGlitcher --dest dist --input dist/package-input --main-jar VideoGlitcher.jar --main-class tom.videoGlitcher.VideoGlitcher --java-options \"-Dgstreamer.library.path=\$APPDIR/Contents/app/video-macos-aarch64\" --java-options \"-Dgstreamer.plugin.path=\$APPDIR/Contents/app/video-macos-aarch64/gstreamer-1.0\"",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Build VideoGlitcher",
+            "problemMatcher": []
+        },
+        {
+            "label": "Package VideoGlitcher (portable zip)",
+            "type": "shell",
+            "command": "rm -rf dist/package-input dist/portable dist/VideoGlitcher-portable.zip && mkdir -p dist/portable/VideoGlitcher/lib dist/portable/VideoGlitcher/video && jar --create --file dist/portable/VideoGlitcher/VideoGlitcher.jar -C bin . && cp lib/core.jar dist/portable/VideoGlitcher/lib/ && cp lib/controlP5/library/*.jar dist/portable/VideoGlitcher/lib/ && cp lib/processing-opengl/library/*.jar dist/portable/VideoGlitcher/lib/ && cp lib/videoExport/library/*.jar dist/portable/VideoGlitcher/lib/ && cp lib/video/library/*.jar dist/portable/VideoGlitcher/lib/ && cp -R lib/video/library/linux-amd64 dist/portable/VideoGlitcher/video/ && cp -R lib/video/library/macos-aarch64 dist/portable/VideoGlitcher/video/ && cp -R lib/video/library/macos-x86_64 dist/portable/VideoGlitcher/video/ && cp -R lib/video/library/windows-amd64 dist/portable/VideoGlitcher/video/ && cp packaging/portable/run-macos.sh dist/portable/VideoGlitcher/ && cp packaging/portable/run-linux.sh dist/portable/VideoGlitcher/ && cp packaging/portable/run-windows.bat dist/portable/VideoGlitcher/ && chmod +x dist/portable/VideoGlitcher/run-macos.sh dist/portable/VideoGlitcher/run-linux.sh && cd dist/portable && zip -r ../VideoGlitcher-portable.zip VideoGlitcher",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

@@ -1,4 +1,5 @@
 bin/
+dist/
 out/
 target/
 .settings/

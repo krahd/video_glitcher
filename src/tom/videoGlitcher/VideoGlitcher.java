@@ -87,14 +87,14 @@ public class VideoGlitcher extends PApplet {
 
     @Override
     public void settings() {
+        pixelDensity(1);
+        noSmooth();
         fullScreen(P2D);
     }
 
     @Override
     public void setup() {
-        pixelDensity(1);
         frameRate(FPS);
-        noSmooth();
         surface.setTitle("Cinematic Glitcher");
 
         setupGui();
