@@ -45,15 +45,15 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/VideoExport/library/*" \
-            -d bin src/tom/videoGlitcher/VideoGlitcher.java
+          javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
+            -d bin src/tom/videoGlitcher/VideoGlitcher.java src/tom/videoGlitcher/VideoGlitcherLogic.java src/tom/videoGlitcher/FfmpegVideoExporter.java
 
       - name: Build app (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          javac -cp "lib\core.jar;lib\controlP5\library\*;lib\processing-opengl\library\*;lib\video\library\*;lib\VideoExport\library\*" `
-            -d bin src\tom\videoGlitcher\VideoGlitcher.java
+          javac -cp "lib\core.jar;lib\controlP5\library\*;lib\processing-opengl\library\*;lib\video\library\*" `
+            -d bin src\tom\videoGlitcher\VideoGlitcher.java src\tom\videoGlitcher\VideoGlitcherLogic.java src\tom\videoGlitcher\FfmpegVideoExporter.java
 
       - name: Package release bundle (macOS/Linux)
         if: runner.os != 'Windows'
@@ -65,7 +65,6 @@ jobs:
           cp lib/core.jar dist/release/VideoGlitcher/lib/
           cp lib/controlP5/library/*.jar dist/release/VideoGlitcher/lib/
           cp lib/processing-opengl/library/*.jar dist/release/VideoGlitcher/lib/
-          cp lib/VideoExport/library/*.jar dist/release/VideoGlitcher/lib/
           cp lib/video/library/*.jar dist/release/VideoGlitcher/lib/
           cp -R "${{ matrix.native_dir }}" dist/release/VideoGlitcher/video/
           cp "${{ matrix.launcher }}" dist/release/VideoGlitcher/
@@ -84,7 +83,6 @@ jobs:
           Copy-Item lib/core.jar dist/release/VideoGlitcher/lib/
           Copy-Item lib/controlP5/library/*.jar dist/release/VideoGlitcher/lib/
           Copy-Item lib/processing-opengl/library/*.jar dist/release/VideoGlitcher/lib/
-          Copy-Item lib/VideoExport/library/*.jar dist/release/VideoGlitcher/lib/
           Copy-Item lib/video/library/*.jar dist/release/VideoGlitcher/lib/
           Copy-Item -Recurse "${{ matrix.native_dir }}" dist/release/VideoGlitcher/video/
           Copy-Item "${{ matrix.launcher }}" dist/release/VideoGlitcher/

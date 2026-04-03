@@ -4,20 +4,28 @@ import processing.core.*;
 import processing.data.IntList;
 import processing.video.*;
 import controlP5.*;
-import com.hamoid.*;
 
 
 import java.io.File;
+import java.io.IOException;
 
 public class VideoGlitcher extends PApplet {
 
+    private static LaunchOptions launchOptions = LaunchOptions.defaults();
+
     public static void main(String[] args) {
+        launchOptions = LaunchOptions.parse(args);
+        if (launchOptions.smokeTest()) {
+            PApplet.main(new String[] { VideoGlitcher.class.getName() });
+            return;
+        }
+
         PApplet.main(new String[] { "--present", VideoGlitcher.class.getName() });
     }
 
     private Movie video;
     private ControlP5 cp5;
-    private VideoExport videoExport;
+    private FfmpegVideoExporter videoExporter;
     private File currentVideoFile;
 
     private boolean movieReady = false;
@@ -81,6 +89,8 @@ public class VideoGlitcher extends PApplet {
     private Textlabel statusLabel;
 
     private boolean triedVideoUriFallback = false;
+    private boolean smokeExportStarted = false;
+    private int smokeExportFramesSaved = 0;
 
     private int panelX = 12;
     private int panelY = 12;
@@ -98,17 +108,30 @@ public class VideoGlitcher extends PApplet {
     public void settings() {
         pixelDensity(1);
         noSmooth();
-        fullScreen(P2D);
+        if (launchOptions.smokeTest()) {
+            size(960, 540, P2D);
+        } else {
+            fullScreen(P2D);
+        }
     }
 
     @Override
     public void setup() {
         frameRate(FPS);
-        surface.setTitle("Cinematic Glitcher");
+        surface.setTitle(launchOptions.smokeTest() ? "Cinematic Glitcher Smoke Test" : "Cinematic Glitcher");
 
         setupGui();
-        applyPreset("Cinematic");
+        applyPreset(launchOptions.presetName());
         calmFramesLeft = (int) random(calmMinFrames, calmMaxFrames + 1);
+
+        if (launchOptions.smokeTest()) {
+            showGUI = false;
+            showHUD = false;
+        }
+
+        if (!launchOptions.videoPath().isEmpty()) {
+            loadVideoFile(new File(launchOptions.videoPath()));
+        }
     }
 
     @Override
@@ -155,14 +178,18 @@ public class VideoGlitcher extends PApplet {
 
         previousFrame = get();
 
-        if (exporting && videoExport != null && movieReady) {
-            videoExport.saveFrame();
+        if (exporting && videoExporter != null && movieReady) {
+            saveExportFrame();
         }
 
         if (showHUD)
             drawHUD();
         if (showGUI)
             drawGui();
+
+        if (launchOptions.smokeTest()) {
+            runSmokeCycle();
+        }
     }
 
     @Override
@@ -509,27 +536,18 @@ public class VideoGlitcher extends PApplet {
     }
 
     private String makeExportFilename(String sourceName) {
-        int dot = sourceName.lastIndexOf('.');
-        String base = (dot > 0) ? sourceName.substring(0, dot) : sourceName;
-        return base + "_glitched.mp4";
+        return VideoGlitcherLogic.makeExportFilename(sourceName);
     }
 
     private void computeVideoFit() {
         if (video == null || video.width <= 0 || video.height <= 0)
             return;
 
-        float sx = (float) width / (float) video.width;
-        float sy = (float) height / (float) video.height;
-        float scaleFactor = Math.min(sx, sy);
-
-        if (scaleFactor > 1.0f) {
-            scaleFactor = 1.0f;
-        }
-
-        drawW = video.width * scaleFactor;
-        drawH = video.height * scaleFactor;
-        drawX = (width - drawW) * 0.5f;
-        drawY = (height - drawH) * 0.5f;
+        VideoGlitcherLogic.VideoFit fit = VideoGlitcherLogic.computeVideoFit(width, height, video.width, video.height);
+        drawX = fit.drawX();
+        drawY = fit.drawY();
+        drawW = fit.drawW();
+        drawH = fit.drawH();
     }
 
     private void drawNoVideoScreen() {
@@ -615,27 +633,27 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void normalizeRanges() {
-        if (episodeMaxFrames < episodeMinFrames)
-            episodeMaxFrames = episodeMinFrames;
-        if (calmMaxFrames < calmMinFrames)
-            calmMaxFrames = calmMinFrames;
+        VideoGlitcherLogic.RangeValues ranges = VideoGlitcherLogic.normalizeRanges(
+                episodeMinFrames,
+                episodeMaxFrames,
+                calmMinFrames,
+                calmMaxFrames);
+        episodeMinFrames = ranges.episodeMinFrames();
+        episodeMaxFrames = ranges.episodeMaxFrames();
+        calmMinFrames = ranges.calmMinFrames();
+        calmMaxFrames = ranges.calmMaxFrames();
     }
 
     private void updateGlitchState() {
-        if (glitchActive) {
-            glitchFramesLeft--;
-            if (glitchFramesLeft <= 0) {
-                glitchActive = false;
-                calmFramesLeft = (int) random(calmMinFrames, calmMaxFrames + 1);
-            }
-        } else {
-            calmFramesLeft--;
-            float spontaneousChance = 0.01f + glitchFrequency * 0.08f;
-            if (calmFramesLeft <= 0 || random(1) < spontaneousChance) {
-                glitchActive = true;
-                glitchFramesLeft = (int) random(episodeMinFrames, episodeMaxFrames + 1);
-            }
-        }
+        VideoGlitcherLogic.GlitchState next = VideoGlitcherLogic.advanceGlitchState(
+                new VideoGlitcherLogic.GlitchState(glitchActive, glitchFramesLeft, calmFramesLeft),
+                glitchFrequency,
+                random(1),
+                (int) random(calmMinFrames, calmMaxFrames + 1),
+                (int) random(episodeMinFrames, episodeMaxFrames + 1));
+        glitchActive = next.glitchActive();
+        glitchFramesLeft = next.glitchFramesLeft();
+        calmFramesLeft = next.calmFramesLeft();
     }
 
     private void updateCameraJitter() {
@@ -974,52 +992,19 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void applyPreset(String name) {
-        if (name.equals("Subtle")) {
-            glitchIntensity = 0.45f;
-            glitchFrequency = 0.22f;
-            episodeMinFrames = 2;
-            episodeMaxFrames = 6;
-            calmMinFrames = 18;
-            calmMaxFrames = 55;
-            subtleDamageChance = 0.18f;
-            burstChance = 0.04f;
-        } else if (name.equals("Cinematic")) {
-            glitchIntensity = 0.85f;
-            glitchFrequency = 0.55f;
-            episodeMinFrames = 4;
-            episodeMaxFrames = 14;
-            calmMinFrames = 10;
-            calmMaxFrames = 40;
-            subtleDamageChance = 0.25f;
-            burstChance = 0.16f;
-        } else if (name.equals("Corrupted File")) {
-            glitchIntensity = 1.05f;
-            glitchFrequency = 0.72f;
-            episodeMinFrames = 5;
-            episodeMaxFrames = 18;
-            calmMinFrames = 6;
-            calmMaxFrames = 22;
-            subtleDamageChance = 0.32f;
-            burstChance = 0.24f;
-        } else if (name.equals("Broken Codec")) {
-            glitchIntensity = 1.20f;
-            glitchFrequency = 0.82f;
-            episodeMinFrames = 6;
-            episodeMaxFrames = 20;
-            calmMinFrames = 4;
-            calmMaxFrames = 16;
-            subtleDamageChance = 0.36f;
-            burstChance = 0.28f;
-        } else if (name.equals("Extreme")) {
-            glitchIntensity = 1.55f;
-            glitchFrequency = 0.92f;
-            episodeMinFrames = 8;
-            episodeMaxFrames = 26;
-            calmMinFrames = 2;
-            calmMaxFrames = 10;
-            subtleDamageChance = 0.42f;
-            burstChance = 0.38f;
+        VideoGlitcherLogic.PresetValues preset = VideoGlitcherLogic.presetForName(name);
+        if (preset == null) {
+            return;
         }
+
+        glitchIntensity = preset.glitchIntensity();
+        glitchFrequency = preset.glitchFrequency();
+        episodeMinFrames = preset.episodeMinFrames();
+        episodeMaxFrames = preset.episodeMaxFrames();
+        calmMinFrames = preset.calmMinFrames();
+        calmMaxFrames = preset.calmMaxFrames();
+        subtleDamageChance = preset.subtleDamageChance();
+        burstChance = preset.burstChance();
 
         syncGuiValues();
     }
@@ -1056,9 +1041,12 @@ public class VideoGlitcher extends PApplet {
         video.play();
         updatePausePlayButton();
 
-        videoExport = new VideoExport(this, exportFilename);
-        videoExport.setFrameRate(FPS);
-        videoExport.startMovie();
+        try {
+            videoExporter = FfmpegVideoExporter.start(exportFilename, width, height, FPS);
+        } catch (IOException | RuntimeException exception) {
+            failExport("Export failed: " + exception.getMessage());
+            return;
+        }
 
         exporting = true;
         statusLabel.setText("Status: exporting to " + exportFilename);
@@ -1070,13 +1058,45 @@ public class VideoGlitcher extends PApplet {
             return;
 
         exporting = false;
-        if (videoExport != null) {
-            videoExport.endMovie();
-            videoExport = null;
+        if (videoExporter != null) {
+            try {
+                videoExporter.finish();
+            } catch (IOException exception) {
+                failExport("Export failed: " + exception.getMessage());
+                return;
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                failExport("Export interrupted");
+                return;
+            }
+            videoExporter = null;
         }
 
         statusLabel.setText("Status: export finished");
         println("Export finished");
+    }
+
+    private void saveExportFrame() {
+        loadPixels();
+        try {
+            videoExporter.writeFrame(pixels);
+        } catch (IOException exception) {
+            failExport("Export failed: " + exception.getMessage());
+        }
+    }
+
+    private void failExport(String message) {
+        exporting = false;
+        if (videoExporter != null) {
+            videoExporter.abort();
+            videoExporter = null;
+        }
+
+        statusLabel.setText("Status: export failed");
+        println(message);
+        if (launchOptions.smokeTest()) {
+            finishSmokeRun(false, message);
+        }
     }
 
     private void togglePausePlay() {
@@ -1109,5 +1129,157 @@ public class VideoGlitcher extends PApplet {
             return;
 
         glitchToggleButton.setLabel(glitchEnabled ? "Glitch On" : "Glitch Off");
+    }
+
+    private void runSmokeCycle() {
+        if (launchOptions.autoExport() && movieReady && video != null && !smokeExportStarted) {
+            startExport();
+            smokeExportStarted = exporting;
+        }
+
+        if (launchOptions.autoExport() && exporting) {
+            smokeExportFramesSaved++;
+            if (smokeExportFramesSaved >= launchOptions.exportFrames()) {
+                stopExport();
+                finishSmokeRun(true, "Smoke export completed");
+                return;
+            }
+        }
+
+        if (frameCount >= launchOptions.smokeFrames()) {
+            if (!launchOptions.videoPath().isEmpty() && !movieReady) {
+                finishSmokeRun(false, "Smoke run timed out before video became ready");
+                return;
+            }
+
+            if (launchOptions.autoExport() && !smokeExportStarted) {
+                finishSmokeRun(false, "Smoke run timed out before export started");
+                return;
+            }
+
+            if (exporting) {
+                stopExport();
+            }
+
+            finishSmokeRun(true, "Smoke startup completed");
+        }
+    }
+
+    private void finishSmokeRun(boolean success, String message) {
+        println(message);
+        if (exporting) {
+            stopExport();
+        }
+        dispose();
+        System.exit(success ? 0 : 1);
+    }
+
+    private static final class LaunchOptions {
+        private final boolean smokeTest;
+        private final String videoPath;
+        private final String presetName;
+        private final boolean autoExport;
+        private final int smokeFrames;
+        private final int exportFrames;
+
+        private LaunchOptions(boolean smokeTest, String videoPath, String presetName, boolean autoExport, int smokeFrames,
+                int exportFrames) {
+            this.smokeTest = smokeTest;
+            this.videoPath = videoPath;
+            this.presetName = presetName;
+            this.autoExport = autoExport;
+            this.smokeFrames = smokeFrames;
+            this.exportFrames = exportFrames;
+        }
+
+        static LaunchOptions defaults() {
+            return new LaunchOptions(false, "", "Cinematic", false, 60, 48);
+        }
+
+        static LaunchOptions parse(String[] args) {
+            boolean smokeTest = false;
+            String videoPath = "";
+            String presetName = "Cinematic";
+            boolean autoExport = false;
+            int smokeFrames = 60;
+            int exportFrames = 48;
+
+            for (String arg : args) {
+                if ("--smoke-test".equals(arg)) {
+                    smokeTest = true;
+                } else if (arg.startsWith("--video=")) {
+                    videoPath = arg.substring("--video=".length());
+                } else if (arg.startsWith("--preset=")) {
+                    presetName = parsePresetName(arg.substring("--preset=".length()));
+                } else if ("--auto-export".equals(arg)) {
+                    autoExport = true;
+                } else if (arg.startsWith("--smoke-frames=")) {
+                    smokeFrames = parsePositiveInt(arg.substring("--smoke-frames=".length()), 60);
+                } else if (arg.startsWith("--export-frames=")) {
+                    exportFrames = parsePositiveInt(arg.substring("--export-frames=".length()), 48);
+                }
+            }
+
+            return new LaunchOptions(smokeTest, videoPath, presetName, autoExport, smokeFrames, exportFrames);
+        }
+
+        private static String parsePresetName(String value) {
+            String trimmed = value == null ? "" : value.trim();
+            if (trimmed.isEmpty()) {
+                return "Cinematic";
+            }
+
+            switch (trimmed.toLowerCase()) {
+                case "subtle":
+                    return "Subtle";
+                case "cinematic":
+                    return "Cinematic";
+                case "corrupted file":
+                case "corrupted-file":
+                case "corrupted_file":
+                    return "Corrupted File";
+                case "broken codec":
+                case "broken-codec":
+                case "broken_codec":
+                    return "Broken Codec";
+                case "extreme":
+                    return "Extreme";
+                default:
+                    return "Cinematic";
+            }
+        }
+
+        private static int parsePositiveInt(String value, int fallback) {
+            try {
+                int parsed = Integer.parseInt(value);
+                return parsed > 0 ? parsed : fallback;
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+
+        boolean smokeTest() {
+            return smokeTest;
+        }
+
+        String videoPath() {
+            return videoPath;
+        }
+
+        String presetName() {
+            return presetName;
+        }
+
+        boolean autoExport() {
+            return autoExport;
+        }
+
+        int smokeFrames() {
+            return smokeFrames;
+        }
+
+        int exportFrames() {
+            return exportFrames;
+        }
     }
 }
