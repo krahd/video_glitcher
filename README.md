@@ -163,3 +163,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - Video playback depends on the bundled Processing video library and native GStreamer files matching your platform.
 - The macOS packaging task builds an `.app` image with the required jars and bundled Apple Silicon video natives.
 - Pushing a release tag like `v1.0.4` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
+
+## Contributing
+
+Pull requests are welcome.
