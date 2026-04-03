@@ -1,0 +1,104 @@
+name: Release Bundles
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos-aarch64
+            native_dir: lib/video/library/macos-aarch64
+            launcher: packaging/portable/run-macos.sh
+            asset_name: VideoGlitcher-macos-aarch64.zip
+          - os: ubuntu-22.04
+            platform: linux-amd64
+            native_dir: lib/video/library/linux-amd64
+            launcher: packaging/portable/run-linux.sh
+            asset_name: VideoGlitcher-linux-amd64.zip
+          - os: windows-2022
+            platform: windows-amd64
+            native_dir: lib/video/library/windows-amd64
+            launcher: packaging/portable/run-windows.bat
+            asset_name: VideoGlitcher-windows-amd64.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build app (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*:lib/videoExport/library/*" \
+            -d bin src/tom/videoGlitcher/VideoGlitcher.java
+
+      - name: Build app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          javac -cp "lib\core.jar;lib\controlP5\library\*;lib\processing-opengl\library\*;lib\video\library\*;lib\videoExport\library\*" `
+            -d bin src\tom\videoGlitcher\VideoGlitcher.java
+
+      - name: Package release bundle (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          rm -rf dist/release "dist/${{ matrix.asset_name }}"
+          mkdir -p dist/release/VideoGlitcher/lib dist/release/VideoGlitcher/video
+          jar --create --file dist/release/VideoGlitcher/VideoGlitcher.jar -C bin .
+          cp lib/core.jar dist/release/VideoGlitcher/lib/
+          cp lib/controlP5/library/*.jar dist/release/VideoGlitcher/lib/
+          cp lib/processing-opengl/library/*.jar dist/release/VideoGlitcher/lib/
+          cp lib/videoExport/library/*.jar dist/release/VideoGlitcher/lib/
+          cp lib/video/library/*.jar dist/release/VideoGlitcher/lib/
+          cp -R "${{ matrix.native_dir }}" dist/release/VideoGlitcher/video/
+          cp "${{ matrix.launcher }}" dist/release/VideoGlitcher/
+          chmod +x dist/release/VideoGlitcher/*.sh
+          cd dist/release
+          zip -r "../${{ matrix.asset_name }}" VideoGlitcher
+
+      - name: Package release bundle (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force dist/release, "dist/${{ matrix.asset_name }}" -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force dist/release/VideoGlitcher/lib | Out-Null
+          New-Item -ItemType Directory -Force dist/release/VideoGlitcher/video | Out-Null
+          jar --create --file dist/release/VideoGlitcher/VideoGlitcher.jar -C bin .
+          Copy-Item lib/core.jar dist/release/VideoGlitcher/lib/
+          Copy-Item lib/controlP5/library/*.jar dist/release/VideoGlitcher/lib/
+          Copy-Item lib/processing-opengl/library/*.jar dist/release/VideoGlitcher/lib/
+          Copy-Item lib/videoExport/library/*.jar dist/release/VideoGlitcher/lib/
+          Copy-Item lib/video/library/*.jar dist/release/VideoGlitcher/lib/
+          Copy-Item -Recurse "${{ matrix.native_dir }}" dist/release/VideoGlitcher/video/
+          Copy-Item "${{ matrix.launcher }}" dist/release/VideoGlitcher/
+          Compress-Archive -Path dist/release/VideoGlitcher -DestinationPath "dist/${{ matrix.asset_name }}" -Force
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+
+      - name: Publish GitHub release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset_name }}
+          generate_release_notes: true
