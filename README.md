@@ -6,6 +6,16 @@ The repository is self-contained and includes the Processing OpenGL jars needed 
 
 ## Releases
 
+Current public release:
+
+- [v1.0.3 release page](https://github.com/krahd/video_glitcher/releases/tag/v1.0.3)
+
+Direct downloads for `v1.0.3`:
+
+- [macOS Apple Silicon](https://github.com/krahd/video_glitcher/releases/download/v1.0.3/VideoGlitcher-macos-aarch64.zip)
+- [Linux x64](https://github.com/krahd/video_glitcher/releases/download/v1.0.3/VideoGlitcher-linux-amd64.zip)
+- [Windows x64](https://github.com/krahd/video_glitcher/releases/download/v1.0.3/VideoGlitcher-windows-amd64.zip)
+
 Latest release downloads:
 
 - [macOS Apple Silicon](https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-macos-aarch64.zip)
@@ -15,6 +25,12 @@ Latest release downloads:
 All releases:
 
 - [GitHub Releases](https://github.com/krahd/video_glitcher/releases)
+
+SHA-256 checksums for `v1.0.3`:
+
+- `VideoGlitcher-macos-aarch64.zip`: `ddd9cdcc2da98a08afec050fbaea7d185372d59473735b32b532b62117e975b1`
+- `VideoGlitcher-linux-amd64.zip`: `a5105b92adb4f0279f859393838a7d9207c8ed8793a1957a70da3d14cc221034`
+- `VideoGlitcher-windows-amd64.zip`: `718ca232cdb6f066e3fb14328dbb11985c5a4bc76e997446fbb6b79f4ba38758`
 
 ## Project Layout
 
@@ -142,4 +158,4 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - The app is written as plain Java, so Processing types that are auto-imported in `.pde` sketches must be imported explicitly in the Java source.
 - Video playback depends on the bundled Processing video library and native GStreamer files matching your platform.
 - The macOS packaging task builds an `.app` image with the required jars and bundled Apple Silicon video natives.
-- Tagging a version like `v1.0.0` triggers the GitHub Actions workflow to publish downloadable release bundles for macOS, Linux, and Windows.
+- Pushing a release tag like `v1.0.4` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
