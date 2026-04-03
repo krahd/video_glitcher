@@ -1,8 +1,8 @@
 # Video Glitcher
 
-![Animated preview of Video Glitcher](assets/video-glitcher-preview.gif)
+![Animated preview of Video Glitcher using the Boxy sample clip](assets/video-glitcher-demo.gif)
 
-_Compact animated preview of the fullscreen glitch playback interface._
+_Real demo loop rendered from the Boxy sample clip used for release-page preview assets._
 
 Video Glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and can export the result as an MP4.
 
