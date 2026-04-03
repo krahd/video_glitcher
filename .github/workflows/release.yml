@@ -19,17 +19,17 @@ jobs:
             platform: macos-aarch64
             native_dir: lib/video/library/macos-aarch64
             launcher: packaging/portable/run-macos.sh
-            asset_name: VideoGlitcher-macos-aarch64.zip
+            asset_name: video_glitcher-macos-aarch64.zip
           - os: ubuntu-22.04
             platform: linux-amd64
             native_dir: lib/video/library/linux-amd64
             launcher: packaging/portable/run-linux.sh
-            asset_name: VideoGlitcher-linux-amd64.zip
+            asset_name: video_glitcher-linux-amd64.zip
           - os: windows-2022
             platform: windows-amd64
             native_dir: lib/video/library/windows-amd64
             launcher: packaging/portable/run-windows.bat
-            asset_name: VideoGlitcher-windows-amd64.zip
+            asset_name: video_glitcher-windows-amd64.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -60,33 +60,33 @@ jobs:
         shell: bash
         run: |
           rm -rf dist/release "dist/${{ matrix.asset_name }}"
-          mkdir -p dist/release/VideoGlitcher/lib dist/release/VideoGlitcher/video
-          jar --create --file dist/release/VideoGlitcher/VideoGlitcher.jar -C bin .
-          cp lib/core.jar dist/release/VideoGlitcher/lib/
-          cp lib/controlP5/library/*.jar dist/release/VideoGlitcher/lib/
-          cp lib/processing-opengl/library/*.jar dist/release/VideoGlitcher/lib/
-          cp lib/video/library/*.jar dist/release/VideoGlitcher/lib/
-          cp -R "${{ matrix.native_dir }}" dist/release/VideoGlitcher/video/
-          cp "${{ matrix.launcher }}" dist/release/VideoGlitcher/
-          chmod +x dist/release/VideoGlitcher/*.sh
+          mkdir -p dist/release/video_glitcher/lib dist/release/video_glitcher/video
+          jar --create --file dist/release/video_glitcher/video_glitcher.jar -C bin .
+          cp lib/core.jar dist/release/video_glitcher/lib/
+          cp lib/controlP5/library/*.jar dist/release/video_glitcher/lib/
+          cp lib/processing-opengl/library/*.jar dist/release/video_glitcher/lib/
+          cp lib/video/library/*.jar dist/release/video_glitcher/lib/
+          cp -R "${{ matrix.native_dir }}" dist/release/video_glitcher/video/
+          cp "${{ matrix.launcher }}" dist/release/video_glitcher/
+          chmod +x dist/release/video_glitcher/*.sh
           cd dist/release
-          zip -r "../${{ matrix.asset_name }}" VideoGlitcher
+          zip -r "../${{ matrix.asset_name }}" video_glitcher
 
       - name: Package release bundle (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Remove-Item -Recurse -Force dist/release, "dist/${{ matrix.asset_name }}" -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Force dist/release/VideoGlitcher/lib | Out-Null
-          New-Item -ItemType Directory -Force dist/release/VideoGlitcher/video | Out-Null
-          jar --create --file dist/release/VideoGlitcher/VideoGlitcher.jar -C bin .
-          Copy-Item lib/core.jar dist/release/VideoGlitcher/lib/
-          Copy-Item lib/controlP5/library/*.jar dist/release/VideoGlitcher/lib/
-          Copy-Item lib/processing-opengl/library/*.jar dist/release/VideoGlitcher/lib/
-          Copy-Item lib/video/library/*.jar dist/release/VideoGlitcher/lib/
-          Copy-Item -Recurse "${{ matrix.native_dir }}" dist/release/VideoGlitcher/video/
-          Copy-Item "${{ matrix.launcher }}" dist/release/VideoGlitcher/
-          Compress-Archive -Path dist/release/VideoGlitcher -DestinationPath "dist/${{ matrix.asset_name }}" -Force
+          New-Item -ItemType Directory -Force dist/release/video_glitcher/lib | Out-Null
+          New-Item -ItemType Directory -Force dist/release/video_glitcher/video | Out-Null
+          jar --create --file dist/release/video_glitcher/video_glitcher.jar -C bin .
+          Copy-Item lib/core.jar dist/release/video_glitcher/lib/
+          Copy-Item lib/controlP5/library/*.jar dist/release/video_glitcher/lib/
+          Copy-Item lib/processing-opengl/library/*.jar dist/release/video_glitcher/lib/
+          Copy-Item lib/video/library/*.jar dist/release/video_glitcher/lib/
+          Copy-Item -Recurse "${{ matrix.native_dir }}" dist/release/video_glitcher/video/
+          Copy-Item "${{ matrix.launcher }}" dist/release/video_glitcher/
+          Compress-Archive -Path dist/release/video_glitcher -DestinationPath "dist/${{ matrix.asset_name }}" -Force
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4

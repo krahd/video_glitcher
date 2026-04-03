@@ -126,7 +126,7 @@ public class VideoGlitcher extends PApplet {
     @Override
     public void setup() {
         frameRate(FPS);
-        surface.setTitle(launchOptions.smokeTest() ? "Cinematic Glitcher Smoke Test" : "Cinematic Glitcher");
+        surface.setTitle(launchOptions.smokeTest() ? "video_glitcher Smoke Test" : "video_glitcher");
 
         setupGui();
         applyPreset(launchOptions.presetName());
