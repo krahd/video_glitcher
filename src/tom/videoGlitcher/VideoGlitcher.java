@@ -18,6 +18,8 @@ public class VideoGlitcher extends PApplet {
     private static final String REWIND_TO_START_LABEL = "<<";
     private static final String LOOPING_LABEL = "LOOP";
     private static final String PLAY_ONCE_LABEL = "ONCE";
+    private static final String PROCESS_FULL_LABEL = "Process Full";
+    private static final String PROCESSING_LABEL = "Processing...";
 
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
@@ -54,6 +56,8 @@ public class VideoGlitcher extends PApplet {
     private boolean showGUI = true;
     private boolean freezeManual = false;
     private boolean selectingVideo = false;
+    private ExportMode exportMode = ExportMode.NONE;
+    private boolean exportReachedPlaybackEnd = false;
 
     private float glitchIntensity = 0.85f;
     private float glitchFrequency = 0.55f;
@@ -89,10 +93,15 @@ public class VideoGlitcher extends PApplet {
     private float zoomJitter = 1.0f;
     private float offsetX = 0;
     private float offsetY = 0;
+    private RenderSettings liveRenderSettings = captureCurrentRenderSettings();
+    private RenderSettings lockedRenderSettings = null;
 
     private Button pausePlayButton;
     private Button playbackModeButton;
     private Button glitchToggleButton;
+    private Button interactiveExportButton;
+    private Button stopExportButton;
+    private Button processVideoButton;
     private DropdownList presetList;
     private Textlabel statusLabel;
 
@@ -103,7 +112,7 @@ public class VideoGlitcher extends PApplet {
     private int panelX = 12;
     private int panelY = 12;
     private int panelW = 420;
-    private int panelH = 860;
+    private int panelH = 904;
 
     private int guiX = panelX + 14;
     private int guiY = panelY + 14;
@@ -151,7 +160,9 @@ public class VideoGlitcher extends PApplet {
         }
 
         normalizeRanges();
+        liveRenderSettings = captureCurrentRenderSettings();
         updatePlaybackEffects();
+        boolean activeGlitchEnabled = activeRenderSettings().glitchEnabled();
 
         pushMatrix();
         translate(offsetX, offsetY);
@@ -171,9 +182,9 @@ public class VideoGlitcher extends PApplet {
                 image(video, drawX, drawY, drawW, drawH);
             }
 
-            if (glitchEnabled && !paused && glitchActive) {
+            if (activeGlitchEnabled && !paused && glitchActive) {
                 applyRandomGlitchStack();
-            } else if (glitchEnabled && !paused) {
+            } else if (activeGlitchEnabled && !paused) {
                 applySubtleFilmDamage();
             }
         }
@@ -186,7 +197,7 @@ public class VideoGlitcher extends PApplet {
 
         previousFrame = get();
 
-        if (exporting && videoExporter != null && movieReady) {
+        if (shouldWriteExportFrame()) {
             saveExportFrame();
         }
 
@@ -204,6 +215,17 @@ public class VideoGlitcher extends PApplet {
 
     @Override
     public void keyPressed() {
+        if (isFullProcessExportActive()) {
+            if (key == 'e' || key == 'E') {
+                stopExport();
+            } else if (key == 'h' || key == 'H') {
+                showHUD = !showHUD;
+            } else if (key == 'u' || key == 'U') {
+                showGUI = !showGUI;
+            }
+            return;
+        }
+
         if (keyCode == UP) {
             glitchIntensity = min(2.0f, glitchIntensity + 0.1f);
             syncGuiValues();
@@ -230,6 +252,8 @@ public class VideoGlitcher extends PApplet {
                 stopExport();
             else
                 startExport();
+        } else if (key == 'p' || key == 'P') {
+            processVideo();
         } else if (key == 's' || key == 'S') {
             saveFrame("glitch-######.png");
         }
@@ -272,7 +296,7 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void updatePlaybackEffects() {
-        if (!movieReady || video == null || paused || !glitchEnabled) {
+        if (!movieReady || video == null || paused || !activeRenderSettings().glitchEnabled()) {
             glitchActive = false;
             zoomJitter = 1.0f;
             offsetX = 0;
@@ -382,17 +406,25 @@ public class VideoGlitcher extends PApplet {
                 .setLabel("Glitch");
         glitchToggleButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
-        Button b1 = cp5.addButton("startExport")
+        interactiveExportButton = cp5.addButton("startExport")
                 .setPosition(x + 96, y)
                 .setSize(96, 30)
                 .setLabel("Export Start");
-        b1.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        interactiveExportButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
-        Button b2 = cp5.addButton("stopExport")
+        stopExportButton = cp5.addButton("stopExport")
                 .setPosition(x + 200, y)
                 .setSize(96, 30)
                 .setLabel("Export Stop");
-        b2.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        stopExportButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+
+        y += 38;
+
+        processVideoButton = cp5.addButton("processVideo")
+                .setPosition(x, y)
+                .setSize(296, 30)
+                .setLabel(PROCESS_FULL_LABEL);
+        processVideoButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
         y += 42;
 
@@ -403,6 +435,7 @@ public class VideoGlitcher extends PApplet {
         updatePausePlayButton();
         updatePlaybackModeButton();
         updateGlitchButton();
+        updateExportButtons();
     }
 
     private void addSliderRow(String name, int x, int y, int w, int h, float minV, float maxV, float value,
@@ -461,6 +494,10 @@ public class VideoGlitcher extends PApplet {
     }
 
     public void controlEvent(ControlEvent e) {
+        if (isFullProcessExportActive()) {
+            return;
+        }
+
         if (e.isFrom(presetList)) {
             int v = (int) e.getValue();
             if (v == 0)
@@ -477,14 +514,24 @@ public class VideoGlitcher extends PApplet {
     }
 
     public void loadVideo() {
+        if (isFullProcessExportActive()) {
+            return;
+        }
         promptForVideo();
     }
 
     public void pausePlay() {
+        if (isFullProcessExportActive()) {
+            return;
+        }
         togglePausePlay();
     }
 
     public void rewindToStart() {
+        if (isFullProcessExportActive()) {
+            return;
+        }
+
         if (video == null) {
             return;
         }
@@ -503,6 +550,10 @@ public class VideoGlitcher extends PApplet {
     }
 
     public void togglePlaybackMode() {
+        if (isFullProcessExportActive()) {
+            return;
+        }
+
         loopPlayback = !loopPlayback;
 
         if (video != null && !paused) {
@@ -518,13 +569,21 @@ public class VideoGlitcher extends PApplet {
     }
 
     public void toggleGlitching() {
+        if (isFullProcessExportActive()) {
+            return;
+        }
+
         glitchEnabled = !glitchEnabled;
         statusLabel.setText("Status: glitching " + (glitchEnabled ? "enabled" : "disabled"));
         updateGlitchButton();
     }
 
+    public void processVideo() {
+        startFullProcessExport();
+    }
+
     private void promptForVideo() {
-        if (selectingVideo)
+        if (selectingVideo || isFullProcessExportActive())
             return;
         selectingVideo = true;
         selectInput("Select a video file:", "videoSelected");
@@ -676,7 +735,9 @@ public class VideoGlitcher extends PApplet {
         textAlign(LEFT, BASELINE);
 
         String mode = glitchActive ? "GLITCH" : "CALM";
-        String exp = exporting ? "EXPORTING" : "PREVIEW";
+        String exp = exportMode == ExportMode.INTERACTIVE ? "INTERACTIVE EXPORT"
+                : exportMode == ExportMode.FULL_PROCESS ? "FULL PROCESS"
+                : "PREVIEW";
         String gui = showGUI ? "GUI ON" : "GUI OFF";
         String playback = paused ? "PAUSED" : "PLAYING";
         String playbackMode = loopPlayback ? "LOOP" : "ONCE";
@@ -688,7 +749,7 @@ public class VideoGlitcher extends PApplet {
                         "   Repeat: " + playbackMode +
                         "   Output: " + exp +
                         "   " + gui +
-                        "   SPACE play/pause   G glitch   L load   F freeze   H hud   U gui   E export",
+                        "   SPACE play/pause   G glitch   L load   F freeze   H hud   U gui   E export   P process",
                 20, height - 18);
     }
 
@@ -705,22 +766,24 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void updateGlitchState() {
+        RenderSettings settings = activeRenderSettings();
         VideoGlitcherLogic.GlitchState next = VideoGlitcherLogic.advanceGlitchState(
                 new VideoGlitcherLogic.GlitchState(glitchActive, glitchFramesLeft, calmFramesLeft),
-                glitchFrequency,
+                settings.glitchFrequency(),
                 random(1),
-                (int) random(calmMinFrames, calmMaxFrames + 1),
-                (int) random(episodeMinFrames, episodeMaxFrames + 1));
+                (int) random(settings.calmMinFrames(), settings.calmMaxFrames() + 1),
+                (int) random(settings.episodeMinFrames(), settings.episodeMaxFrames() + 1));
         glitchActive = next.glitchActive();
         glitchFramesLeft = next.glitchFramesLeft();
         calmFramesLeft = next.calmFramesLeft();
     }
 
     private void updateCameraJitter() {
-        if (glitchActive && useZoomWobble && random(1) < 0.35f) {
+        RenderSettings settings = activeRenderSettings();
+        if (glitchActive && settings.useZoomWobble() && random(1) < 0.35f) {
             zoomJitter = random(0.985f, 1.02f);
-            offsetX = random(-8, 8) * glitchIntensity;
-            offsetY = random(-5, 5) * glitchIntensity;
+            offsetX = random(-8, 8) * settings.glitchIntensity();
+            offsetY = random(-5, 5) * settings.glitchIntensity();
         } else {
             zoomJitter = 1.0f;
             offsetX = 0;
@@ -729,6 +792,7 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void applyRandomGlitchStack() {
+        RenderSettings settings = activeRenderSettings();
         int layers = (int) random(2, 6);
 
         for (int i = 0; i < layers; i++) {
@@ -762,32 +826,33 @@ public class VideoGlitcher extends PApplet {
             scanlines();
         if (random(1) < 0.60f)
             flickerNoise();
-        if (random(1) < burstChance)
+        if (random(1) < settings.burstChance())
             burstGlitch();
     }
 
     private int pickEnabledEffect() {
+        RenderSettings settings = activeRenderSettings();
         IntList choices = new IntList();
 
-        if (useRGBSplit)
+        if (settings.useRGBSplit())
             choices.append(0);
-        if (useSlices)
+        if (settings.useSlices())
             choices.append(1);
-        if (useBlocks)
+        if (settings.useBlocks())
             choices.append(2);
-        if (useBars)
+        if (settings.useBars())
             choices.append(3);
-        if (useDropouts)
+        if (settings.useDropouts())
             choices.append(4);
-        if (useGhosts)
+        if (settings.useGhosts())
             choices.append(5);
-        if (useMicroJitter)
+        if (settings.useMicroJitter())
             choices.append(6);
-        if (useScanBursts)
+        if (settings.useScanBursts())
             choices.append(7);
-        if (useFlash)
+        if (settings.useFlash())
             choices.append(8);
-        if (useFreeze)
+        if (settings.useFreeze())
             choices.append(9);
 
         if (choices.size() == 0)
@@ -796,12 +861,13 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void applySubtleFilmDamage() {
-        if (random(1) < subtleDamageChance && useRGBSplit)
+        RenderSettings settings = activeRenderSettings();
+        if (random(1) < settings.subtleDamageChance() && settings.useRGBSplit())
             subtleRGBMisalign();
-        if (random(1) < subtleDamageChance * 0.7f && useDropouts)
+        if (random(1) < settings.subtleDamageChance() * 0.7f && settings.useDropouts())
             faintBanding();
 
-        if (random(1) < subtleDamageChance) {
+        if (random(1) < settings.subtleDamageChance()) {
             stroke(0, 25);
             for (int y = (int) drawY; y < drawY + drawH; y += 3) {
                 line(drawX, y, drawX + drawW, y);
@@ -812,7 +878,7 @@ public class VideoGlitcher extends PApplet {
     private void heavyRGBSplit() {
         blendMode(ADD);
 
-        float amt = map(glitchIntensity, 0, 2.0f, 0, 26);
+        float amt = map(activeRenderSettings().glitchIntensity(), 0, 2.0f, 0, 26);
 
         tint(255, 0, 0, random(90, 170));
         image(video, drawX + random(-amt, amt), drawY + random(-amt * 0.4f, amt * 0.4f), drawW, drawH);
@@ -841,7 +907,8 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void horizontalSlices() {
-        int slices = (int) random(5, 16) * max(1, (int) glitchIntensity);
+        float activeGlitchIntensity = activeRenderSettings().glitchIntensity();
+        int slices = (int) random(5, 16) * max(1, (int) activeGlitchIntensity);
 
         int x0 = (int) drawX;
         int y0 = (int) drawY;
@@ -853,7 +920,7 @@ public class VideoGlitcher extends PApplet {
             int h = (int) random(2, 26);
             h = min(h, y0 + h0 - y);
 
-            int dx = (int) (random(-180, 180) * glitchIntensity);
+            int dx = (int) (random(-180, 180) * activeGlitchIntensity);
             copy(x0, y, w0, h, x0 + dx, y, w0, h);
 
             if (random(1) < 0.45f) {
@@ -864,7 +931,8 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void blockGlitch() {
-        int blocks = (int) random(8, 26) * max(1, (int) glitchIntensity);
+        float activeGlitchIntensity = activeRenderSettings().glitchIntensity();
+        int blocks = (int) random(8, 26) * max(1, (int) activeGlitchIntensity);
 
         int x0 = (int) drawX;
         int y0 = (int) drawY;
@@ -894,7 +962,7 @@ public class VideoGlitcher extends PApplet {
         blendMode(ADD);
         noStroke();
 
-        int bars = (int) random(3, 12) * max(1, (int) glitchIntensity);
+        int bars = (int) random(3, 12) * max(1, (int) activeRenderSettings().glitchIntensity());
 
         for (int i = 0; i < max(1, bars); i++) {
             float y = drawY + random(drawH);
@@ -1006,6 +1074,7 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void flickerNoise() {
+        float activeGlitchIntensity = activeRenderSettings().glitchIntensity();
         noStroke();
 
         if (random(1) < 0.32f) {
@@ -1018,7 +1087,7 @@ public class VideoGlitcher extends PApplet {
             rect(drawX, drawY, drawW, drawH);
         }
 
-        int dots = (int) (2200 * glitchIntensity);
+        int dots = (int) (2200 * activeGlitchIntensity);
         for (int i = 0; i < dots; i++) {
             if (random(1) < 0.06f) {
                 fill(random(255), random(10, 90));
@@ -1096,7 +1165,49 @@ public class VideoGlitcher extends PApplet {
         if (exporting || !movieReady || video == null)
             return;
 
+        normalizeRanges();
+        liveRenderSettings = captureCurrentRenderSettings();
+        exportMode = ExportMode.INTERACTIVE;
+        lockedRenderSettings = null;
+        exportReachedPlaybackEnd = false;
+        freezeManual = false;
+        freezeFramesLeft = 0;
         paused = false;
+        pausedFrame = null;
+        if (isAtPlaybackEnd()) {
+            video.jump(0);
+        }
+        startPlayback();
+        updatePausePlayButton();
+
+        try {
+            videoExporter = FfmpegVideoExporter.start(exportFilename, width, height, FPS);
+        } catch (IOException | RuntimeException exception) {
+            failExport("Export failed: " + exception.getMessage());
+            return;
+        }
+
+        exporting = true;
+        updateExportButtons();
+        statusLabel.setText("Status: interactive export to " + exportFilename);
+        println("Interactive export started: " + exportFilename);
+    }
+
+    private void startFullProcessExport() {
+        if (exporting || !movieReady || video == null) {
+            return;
+        }
+
+        normalizeRanges();
+        liveRenderSettings = captureCurrentRenderSettings();
+        lockedRenderSettings = captureCurrentRenderSettings();
+        exportMode = ExportMode.FULL_PROCESS;
+        exportReachedPlaybackEnd = false;
+        resetGlitchCycle(lockedRenderSettings);
+        freezeManual = false;
+        paused = false;
+        pausedFrame = null;
+        video.noLoop();
         video.jump(0);
         video.play();
         updatePausePlayButton();
@@ -1109,14 +1220,16 @@ public class VideoGlitcher extends PApplet {
         }
 
         exporting = true;
-        statusLabel.setText("Status: exporting to " + exportFilename);
-        println("Export started: " + exportFilename);
+        updateExportButtons();
+        statusLabel.setText("Status: processing full video to " + exportFilename);
+        println("Full-process export started: " + exportFilename);
     }
 
     public void stopExport() {
         if (!exporting)
             return;
 
+        ExportMode completedMode = exportMode;
         exporting = false;
         if (videoExporter != null) {
             try {
@@ -1132,8 +1245,21 @@ public class VideoGlitcher extends PApplet {
             videoExporter = null;
         }
 
-        statusLabel.setText("Status: export finished");
-        println("Export finished");
+        exportMode = ExportMode.NONE;
+        exportReachedPlaybackEnd = false;
+        lockedRenderSettings = null;
+        if (completedMode == ExportMode.FULL_PROCESS && video != null && !paused) {
+            startPlayback();
+        }
+        updateExportButtons();
+
+        if (completedMode == ExportMode.FULL_PROCESS) {
+            statusLabel.setText("Status: full-process export finished");
+            println("Full-process export finished");
+        } else {
+            statusLabel.setText("Status: interactive export finished");
+            println("Interactive export finished");
+        }
     }
 
     private void saveExportFrame() {
@@ -1146,12 +1272,20 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void failExport(String message) {
+        ExportMode failedMode = exportMode;
         exporting = false;
         if (videoExporter != null) {
             videoExporter.abort();
             videoExporter = null;
         }
 
+        exportMode = ExportMode.NONE;
+        exportReachedPlaybackEnd = false;
+        lockedRenderSettings = null;
+        if (failedMode == ExportMode.FULL_PROCESS && video != null && !paused) {
+            startPlayback();
+        }
+        updateExportButtons();
         statusLabel.setText("Status: export failed");
         println(message);
         if (launchOptions.smokeTest()) {
@@ -1202,14 +1336,28 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void updatePlaybackCompletion() {
-        if (!movieReady || video == null || paused || loopPlayback || video.isPlaying() || !isAtPlaybackEnd()) {
+        if (!movieReady || video == null || paused || video.isPlaying() || !isAtPlaybackEnd()) {
             return;
         }
 
         paused = true;
         pausedFrame = video.get();
-        statusLabel.setText("Status: finished " + currentVideoName);
         updatePausePlayButton();
+
+        if (exporting) {
+            exportReachedPlaybackEnd = true;
+            if (exportMode == ExportMode.FULL_PROCESS) {
+                stopExport();
+                if (launchOptions.smokeTest() && launchOptions.autoProcess()) {
+                    finishSmokeRun(true, "Smoke full-process export completed");
+                }
+            } else {
+                statusLabel.setText("Status: interactive export reached end, click Export Stop");
+            }
+            return;
+        }
+
+        statusLabel.setText("Status: finished " + currentVideoName);
     }
 
     private void updatePausePlayButton() {
@@ -1234,7 +1382,24 @@ public class VideoGlitcher extends PApplet {
         glitchToggleButton.setLabel(glitchEnabled ? "Glitch On" : "Glitch Off");
     }
 
+    private void updateExportButtons() {
+        if (interactiveExportButton != null) {
+            interactiveExportButton.setLabel(exportMode == ExportMode.INTERACTIVE ? "Exporting..." : "Export Start");
+        }
+        if (processVideoButton != null) {
+            processVideoButton.setLabel(exportMode == ExportMode.FULL_PROCESS ? PROCESSING_LABEL : PROCESS_FULL_LABEL);
+        }
+        if (stopExportButton != null) {
+            stopExportButton.setLabel(exporting ? "Stop Output" : "Export Stop");
+        }
+    }
+
     private void runSmokeCycle() {
+        if (launchOptions.autoProcess() && movieReady && video != null && !smokeExportStarted) {
+            processVideo();
+            smokeExportStarted = exporting;
+        }
+
         if (launchOptions.autoExport() && movieReady && video != null && !smokeExportStarted) {
             startExport();
             smokeExportStarted = exporting;
@@ -1260,6 +1425,16 @@ public class VideoGlitcher extends PApplet {
                 return;
             }
 
+            if (launchOptions.autoProcess() && !smokeExportStarted) {
+                finishSmokeRun(false, "Smoke run timed out before full-process export started");
+                return;
+            }
+
+            if (launchOptions.autoProcess() && exporting) {
+                finishSmokeRun(false, "Smoke run timed out before full-process export finished");
+                return;
+            }
+
             if (exporting) {
                 stopExport();
             }
@@ -1277,26 +1452,106 @@ public class VideoGlitcher extends PApplet {
         System.exit(success ? 0 : 1);
     }
 
+    private boolean shouldWriteExportFrame() {
+        return exporting && videoExporter != null && movieReady
+                && !(exportMode == ExportMode.INTERACTIVE && exportReachedPlaybackEnd);
+    }
+
+    private boolean isFullProcessExportActive() {
+        return exporting && exportMode == ExportMode.FULL_PROCESS;
+    }
+
+    private void resetGlitchCycle(RenderSettings settings) {
+        glitchActive = false;
+        glitchFramesLeft = 0;
+        calmFramesLeft = (int) random(settings.calmMinFrames(), settings.calmMaxFrames() + 1);
+        frozenFrame = null;
+        previousFrame = null;
+        freezeFramesLeft = 0;
+        zoomJitter = 1.0f;
+        offsetX = 0;
+        offsetY = 0;
+    }
+
+    private RenderSettings captureCurrentRenderSettings() {
+        return new RenderSettings(
+                glitchEnabled,
+                glitchIntensity,
+                glitchFrequency,
+                episodeMinFrames,
+                episodeMaxFrames,
+                calmMinFrames,
+                calmMaxFrames,
+                subtleDamageChance,
+                burstChance,
+                useRGBSplit,
+                useSlices,
+                useBlocks,
+                useBars,
+                useDropouts,
+                useGhosts,
+                useFreeze,
+                useScanBursts,
+                useFlash,
+                useMicroJitter,
+                useZoomWobble);
+    }
+
+    private RenderSettings activeRenderSettings() {
+        return lockedRenderSettings != null ? lockedRenderSettings : liveRenderSettings;
+    }
+
+    private record RenderSettings(
+            boolean glitchEnabled,
+            float glitchIntensity,
+            float glitchFrequency,
+            float episodeMinFrames,
+            float episodeMaxFrames,
+            float calmMinFrames,
+            float calmMaxFrames,
+            float subtleDamageChance,
+            float burstChance,
+            boolean useRGBSplit,
+            boolean useSlices,
+            boolean useBlocks,
+            boolean useBars,
+            boolean useDropouts,
+            boolean useGhosts,
+            boolean useFreeze,
+            boolean useScanBursts,
+            boolean useFlash,
+            boolean useMicroJitter,
+            boolean useZoomWobble) {
+    }
+
+    private enum ExportMode {
+        NONE,
+        INTERACTIVE,
+        FULL_PROCESS
+    }
+
     private static final class LaunchOptions {
         private final boolean smokeTest;
         private final String videoPath;
         private final String presetName;
         private final boolean autoExport;
+        private final boolean autoProcess;
         private final int smokeFrames;
         private final int exportFrames;
 
-        private LaunchOptions(boolean smokeTest, String videoPath, String presetName, boolean autoExport, int smokeFrames,
-                int exportFrames) {
+        private LaunchOptions(boolean smokeTest, String videoPath, String presetName, boolean autoExport,
+                boolean autoProcess, int smokeFrames, int exportFrames) {
             this.smokeTest = smokeTest;
             this.videoPath = videoPath;
             this.presetName = presetName;
             this.autoExport = autoExport;
+            this.autoProcess = autoProcess;
             this.smokeFrames = smokeFrames;
             this.exportFrames = exportFrames;
         }
 
         static LaunchOptions defaults() {
-            return new LaunchOptions(false, "", "Cinematic", false, 60, 48);
+            return new LaunchOptions(false, "", "Cinematic", false, false, 60, 48);
         }
 
         static LaunchOptions parse(String[] args) {
@@ -1304,6 +1559,7 @@ public class VideoGlitcher extends PApplet {
             String videoPath = "";
             String presetName = "Cinematic";
             boolean autoExport = false;
+            boolean autoProcess = false;
             int smokeFrames = 60;
             int exportFrames = 48;
 
@@ -1316,6 +1572,8 @@ public class VideoGlitcher extends PApplet {
                     presetName = parsePresetName(arg.substring("--preset=".length()));
                 } else if ("--auto-export".equals(arg)) {
                     autoExport = true;
+                } else if ("--auto-process".equals(arg)) {
+                    autoProcess = true;
                 } else if (arg.startsWith("--smoke-frames=")) {
                     smokeFrames = parsePositiveInt(arg.substring("--smoke-frames=".length()), 60);
                 } else if (arg.startsWith("--export-frames=")) {
@@ -1323,7 +1581,8 @@ public class VideoGlitcher extends PApplet {
                 }
             }
 
-            return new LaunchOptions(smokeTest, videoPath, presetName, autoExport, smokeFrames, exportFrames);
+            return new LaunchOptions(smokeTest, videoPath, presetName, autoExport, autoProcess, smokeFrames,
+                    exportFrames);
         }
 
         private static String parsePresetName(String value) {
@@ -1375,6 +1634,10 @@ public class VideoGlitcher extends PApplet {
 
         boolean autoExport() {
             return autoExport;
+        }
+
+        boolean autoProcess() {
+            return autoProcess;
         }
 
         int smokeFrames() {

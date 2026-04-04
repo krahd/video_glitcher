@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>video_glitcher</title>
-    <meta name="description" content="Realtime video glitching built with Processing. Preview, tune, and export corrupted MP4s with one self-contained desktop app.">
+    <meta name="description" content="Realtime video glitching built with Processing. Preview live, tune presets, or process a full clip end to end and export a corrupted MP4.">
     <style>
         @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
@@ -476,12 +476,13 @@
             <h1>video_glitcher</h1>
             <p class="tagline">
                 Load a clip, break it on purpose, and export the result as a glitched MP4.
-                The app runs as a Processing desktop sketch with realtime preview, presets, and frame-by-frame ffmpeg export.
+                The app runs as a Processing desktop sketch with realtime preview, live export, and a full-process mode that locks the current settings and renders the clip from start to finish.
             </p>
             <div class="hero-meta">
+                <span class="pill">v1.0.5</span>
                 <span class="pill">Fullscreen preview</span>
                 <span class="pill">Preset-driven damage</span>
-                <span class="pill">Direct MP4 export</span>
+                <span class="pill">Live + full-process export</span>
                 <span class="pill">Java 17+</span>
             </div>
             <div class="cta-row">
@@ -492,7 +493,7 @@
             <div class="fact-grid">
                 <article class="fact-card">
                     <div class="fact-label">Status</div>
-                    <div class="fact-value">Live on GitHub Pages and ready for local export testing.</div>
+                    <div class="fact-value">v1.0.5 adds a dedicated full-process export button alongside the original live interactive export flow.</div>
                 </article>
                 <article class="fact-card">
                     <div class="fact-label">Clients</div>
@@ -542,7 +543,7 @@
                 <div>
                     <h2>Instructions</h2>
                     <p class="section-copy">
-                        The workflow stays short: load, tune, preview, export. <code>ffmpeg</code> must be available on your system <code>PATH</code> for MP4 export.
+                        The workflow stays short: load, tune, preview, then choose either live export or full-process export. <code>ffmpeg</code> must be available on your system <code>PATH</code> for MP4 export.
                     </p>
                 </div>
             </div>
@@ -553,7 +554,8 @@
                         <li>Pick a preset such as <code>Cinematic</code>, <code>Broken Codec</code>, or <code>Extreme</code>.</li>
                         <li>Tune intensity, frequency, burst timing, and individual effect toggles while the preview is running.</li>
                         <li>Use <code>G</code> to toggle glitching, <code>Space</code> to pause, and <code>F</code> to freeze on a frame.</li>
-                        <li>Press <code>E</code> or click <code>Export Start</code> to render the current look to MP4.</li>
+                        <li>Use <code>Export Start</code> or <code>E</code> for live export when you want to keep tweaking parameters while the clip plays.</li>
+                        <li>Use <code>Process Full</code> or <code>P</code> when you want the current settings snapshotted and rendered across the full clip automatically.</li>
                     </ol>
                 </article>
                 <article class="manual-card">
@@ -565,7 +567,8 @@
                         <span class="control-chip"><code>F</code> freeze frame</span>
                         <span class="control-chip"><code>H</code> HUD</span>
                         <span class="control-chip"><code>U</code> GUI</span>
-                        <span class="control-chip"><code>E</code> export</span>
+                        <span class="control-chip"><code>E</code> live export</span>
+                        <span class="control-chip"><code>P</code> process full clip</span>
                         <span class="control-chip"><code>S</code> save PNG frame</span>
                     </div>
                 </article>

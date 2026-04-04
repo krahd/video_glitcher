@@ -138,6 +138,20 @@
             "problemMatcher": []
         },
         {
+            "label": "Smoke Test video_glitcher Process (macOS Apple Silicon)",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "mkdir -p dist/smoke && ffmpeg -y -f lavfi -i testsrc=size=640x360:rate=24 -t 3 -pix_fmt yuv420p dist/smoke/sample.mp4 >/dev/null 2>&1 && java -cp 'bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*' -Dgstreamer.library.path='${workspaceFolder}/lib/video/library/macos-aarch64' -Dgstreamer.plugin.path='${workspaceFolder}/lib/video/library/macos-aarch64/gstreamer-1.0' tom.videoGlitcher.VideoGlitcher --smoke-test --video=dist/smoke/sample.mp4 --preset=Extreme --auto-process --smoke-frames=360"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Build video_glitcher",
+            "problemMatcher": []
+        },
+        {
             "label": "Run video_glitcher (macOS Apple Silicon)",
             "type": "process",
             "command": "java",

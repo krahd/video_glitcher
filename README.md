@@ -2,7 +2,7 @@
 
 ![Animated preview of a glitched video_glitcher export](assets/video-glitcher-demo.gif)
 
-video_glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and can export the result as an MP4.
+video_glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and exports the result as an MP4 in either live interactive mode or full-process mode.
 
 Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_glitcher/)
 
@@ -78,8 +78,9 @@ Available tasks:
 - `Smoke Test video_glitcher Startup (macOS Apple Silicon)`
 - `Smoke Test video_glitcher Load (macOS Apple Silicon)`
 - `Smoke Test video_glitcher Export (macOS Apple Silicon)`
+- `Smoke Test video_glitcher Process (macOS Apple Silicon)`
 
-The load and export smoke tasks generate a short sample clip with `ffmpeg` and launch the app with `--smoke-test`. The load task validates the video pipeline without requiring interaction. The export task exercises the direct ffmpeg-backed export path and exits non-zero if export initialization or frame piping fails.
+The load, export, and process smoke tasks generate a short sample clip with `ffmpeg` and launch the app with `--smoke-test`. The load task validates the video pipeline without requiring interaction. The export task exercises the live interactive ffmpeg-backed export path. The process task runs the full-clip end-to-end mode and exits non-zero if the automatic export does not finish cleanly. The shipped command uses a longer smoke timeout because a heavy preset can render slower than realtime.
 
 You can also invoke smoke mode directly from the terminal:
 
@@ -90,13 +91,22 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
   tom.videoGlitcher.VideoGlitcher --smoke-test --smoke-frames=45
 ```
 
-To auto-load a file and exercise export:
+To auto-load a file and exercise live export:
 
 ```sh
 java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
   -Dgstreamer.library.path="$PWD/lib/video/library/macos-aarch64" \
   -Dgstreamer.plugin.path="$PWD/lib/video/library/macos-aarch64/gstreamer-1.0" \
   tom.videoGlitcher.VideoGlitcher --smoke-test --video=/absolute/path/to/sample.mp4 --auto-export --smoke-frames=180 --export-frames=48
+```
+
+To auto-load a file and exercise full-process export:
+
+```sh
+java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
+  -Dgstreamer.library.path="$PWD/lib/video/library/macos-aarch64" \
+  -Dgstreamer.plugin.path="$PWD/lib/video/library/macos-aarch64/gstreamer-1.0" \
+  tom.videoGlitcher.VideoGlitcher --smoke-test --video=/absolute/path/to/sample.mp4 --preset=Extreme --auto-process --smoke-frames=360
 ```
 
 The rest of the app still requires manual validation because runtime behavior depends on a fullscreen `PApplet`, native video libraries, and live GUI interaction.
@@ -178,7 +188,8 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - `F`: toggle freeze mode
 - `H`: show or hide the HUD
 - `U`: show or hide the GUI
-- `E`: start or stop export
+- `E`: start or stop live interactive export
+- `P`: process the full clip from start to finish with the current settings
 - `S`: save a frame as PNG
 - `Up`: increase glitch intensity
 - `Down`: decrease glitch intensity
@@ -188,6 +199,8 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - Clicking inside the GUI does not trigger the background file picker.
 - Glitching starts disabled before the first video is loaded so the empty-state text stays readable.
 - After the first successful video load, glitching turns on automatically and then follows the user's chosen on/off state.
+- `Export Start` / `Export Stop` stay in the interactive lane: you can let the preview run, change settings on the fly, and manually finish the MP4.
+- `Process Full` snapshots the current glitch settings, rewinds to frame 0, renders the entire clip once, and finishes the MP4 automatically at the playback end.
 - If the fitted video does not fill the screen, black mattes are drawn around it so glitches stay confined to the visible video area.
 - The sketch runs in Processing present mode so fullscreen covers the macOS menu bar.
 
@@ -197,7 +210,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - Video playback depends on the bundled Processing video library and native GStreamer files matching your platform.
 - MP4 export depends on `ffmpeg` being installed and available on your `PATH`.
 - The macOS packaging task builds an `.app` image with the required jars and bundled Apple Silicon video natives.
-- Pushing a release tag like `v1.0.4` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
+- Pushing a release tag like `v1.0.5` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
 
 ## Contributing
 
