@@ -1,8 +1,8 @@
-# Video Glitcher
+# video_glitcher
 
-![Animated preview of a glitched Video Glitcher export](assets/video-glitcher-demo.gif)
+![Animated preview of a glitched video_glitcher export](assets/video-glitcher-demo.gif)
 
-Video Glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and can export the result as an MP4.
+video_glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and can export the result as an MP4.
 
 Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_glitcher/)
 
@@ -16,9 +16,9 @@ Latest release page:
 
 Latest release downloads:
 
-- [macOS Apple Silicon](https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-macos-aarch64.zip)
-- [Linux x64](https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-linux-amd64.zip)
-- [Windows x64](https://github.com/krahd/video_glitcher/releases/latest/download/VideoGlitcher-windows-amd64.zip)
+- [macOS Apple Silicon](https://github.com/krahd/video_glitcher/releases/latest/download/video_glitcher-macos-aarch64.zip)
+- [Linux x64](https://github.com/krahd/video_glitcher/releases/latest/download/video_glitcher-linux-amd64.zip)
+- [Windows x64](https://github.com/krahd/video_glitcher/releases/latest/download/video_glitcher-windows-amd64.zip)
 
 For version-pinned downloads and release-specific details, open the release page for the tag you want.
 
@@ -26,8 +26,8 @@ For version-pinned downloads and release-specific details, open the release page
 
 - `src/tom/videoGlitcher/VideoGlitcher.java`: main application source
 - `video_glitcher.pde`: original Processing sketch version
-- `.vscode/launch.json`: debug launch configs for macOS, Windows, and Linux
-- `.vscode/tasks.json`: build and run tasks for VS Code
+- `.vscode/launch.json`: debug launch configs for `video_glitcher` on macOS, Windows, and Linux
+- `.vscode/tasks.json`: build and run tasks for `video_glitcher` in VS Code
 - `.github/workflows/release.yml`: automated cross-platform release bundles
 - `lib/`: bundled Processing, video, ControlP5, and Processing OpenGL libraries
 - `bin/`: compiled class output
@@ -52,7 +52,7 @@ javac -cp "lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:
 In VS Code, run the default build task:
 
 - `Terminal` -> `Run Build Task...`
-- Choose `Build VideoGlitcher`
+- Choose `Build video_glitcher`
 
 ## Test
 
@@ -67,7 +67,7 @@ mkdir -p test-bin && javac -d test-bin src/tom/videoGlitcher/VideoGlitcherLogic.
 In VS Code, you can also run:
 
 - `Terminal` -> `Run Task...`
-- Choose `Test VideoGlitcher Logic`
+- Choose `Test video_glitcher logic`
 
 ### Smoke validation
 
@@ -75,9 +75,9 @@ The app also supports a non-interactive smoke mode for local runtime validation 
 
 Available tasks:
 
-- `Smoke Test VideoGlitcher Startup (macOS Apple Silicon)`
-- `Smoke Test VideoGlitcher Load (macOS Apple Silicon)`
-- `Smoke Test VideoGlitcher Export (macOS Apple Silicon)`
+- `Smoke Test video_glitcher Startup (macOS Apple Silicon)`
+- `Smoke Test video_glitcher Load (macOS Apple Silicon)`
+- `Smoke Test video_glitcher Export (macOS Apple Silicon)`
 
 The load and export smoke tasks generate a short sample clip with `ffmpeg` and launch the app with `--smoke-test`. The load task validates the video pipeline without requiring interaction. The export task exercises the direct ffmpeg-backed export path and exits non-zero if export initialization or frame piping fails.
 
@@ -108,25 +108,25 @@ The rest of the app still requires manual validation because runtime behavior de
 Use:
 
 - `Terminal` -> `Run Task...`
-- Choose `Run VideoGlitcher (macOS Apple Silicon)`
+- Choose `Run video_glitcher (macOS Apple Silicon)`
 
 This task builds the app first, then runs it with the correct bundled GStreamer paths.
 
 Additional platform tasks:
 
-- `Build VideoGlitcher (Linux x64)`
-- `Run VideoGlitcher (Linux x64)`
-- `Build VideoGlitcher (Windows x64)`
-- `Run VideoGlitcher (Windows x64)`
+- `Build video_glitcher (Linux x64)`
+- `Run video_glitcher (Linux x64)`
+- `Build video_glitcher (Windows x64)`
+- `Run video_glitcher (Windows x64)`
 
 ### Distribution package
 
 Use:
 
 - `Terminal` -> `Run Task...`
-- Choose `Package VideoGlitcher (macOS app)`
+- Choose `Package video_glitcher (macOS app)`
 
-This creates a distributable app bundle at `dist/VideoGlitcher.app`.
+This creates a distributable app bundle at `dist/video_glitcher.app`.
 
 ### Release bundles
 
@@ -134,15 +134,15 @@ Use:
 
 - `Terminal` -> `Run Task...`
 - Choose one of:
-- `Package VideoGlitcher Release (macOS Apple Silicon)`
-- `Package VideoGlitcher Release (Linux x64)`
-- `Package VideoGlitcher Release (Windows x64)`
+- `Package video_glitcher Release (macOS Apple Silicon)`
+- `Package video_glitcher Release (Linux x64)`
+- `Package video_glitcher Release (Windows x64)`
 
 These create release archives in `dist/` for each platform, for example:
 
-- `dist/VideoGlitcher-macos-aarch64.zip`
-- `dist/VideoGlitcher-linux-amd64.zip`
-- `dist/VideoGlitcher-windows-amd64.zip`
+- `dist/video_glitcher-macos-aarch64.zip`
+- `dist/video_glitcher-linux-amd64.zip`
+- `dist/video_glitcher-windows-amd64.zip`
 
 Each bundle contains the application jar, the required libraries, the platform-specific video natives, and the matching launcher script.
 
@@ -152,10 +152,10 @@ Use:
 
 - `Run and Debug`
 - Select one of:
-- `Run VideoGlitcher (macOS Apple Silicon)`
-- `Run VideoGlitcher (macOS Intel)`
-- `Run VideoGlitcher (Linux x64 bundled)`
-- `Run VideoGlitcher (Windows x64)`
+- `Run video_glitcher (macOS Apple Silicon)`
+- `Run video_glitcher (macOS Intel)`
+- `Run video_glitcher (Linux x64 bundled)`
+- `Run video_glitcher (Windows x64)`
 - Press `F5`
 
 Each debug launch is configured with the correct bundled libraries and native video paths for that platform.

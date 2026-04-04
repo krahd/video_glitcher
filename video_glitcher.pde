@@ -86,7 +86,7 @@ void setup() {
   pixelDensity(1);
   frameRate(FPS);
   noSmooth();
-  surface.setTitle("Cinematic Glitcher");
+  surface.setTitle("video_glitcher");
 
   setupGui();
   applyPreset("Cinematic");

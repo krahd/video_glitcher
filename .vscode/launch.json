@@ -4,10 +4,10 @@
         
         {
             "type": "java",
-            "name": "Run VideoGlitcher (macOS Apple Silicon)",
+            "name": "Run video_glitcher (macOS Apple Silicon)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
-            "preLaunchTask": "Build VideoGlitcher",
+            "preLaunchTask": "Build video_glitcher",
             "cwd": "${workspaceFolder}",
             "classPaths": [
                 "${workspaceFolder}/bin",
@@ -21,10 +21,10 @@
         },
         {
             "type": "java",
-            "name": "Run VideoGlitcher (macOS Intel)",
+            "name": "Run video_glitcher (macOS Intel)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
-            "preLaunchTask": "Build VideoGlitcher",
+            "preLaunchTask": "Build video_glitcher",
             "cwd": "${workspaceFolder}",
             "classPaths": [
                 "${workspaceFolder}/bin",
@@ -38,10 +38,10 @@
         },
         {
             "type": "java",
-            "name": "Run VideoGlitcher (Windows x64)",
+            "name": "Run video_glitcher (Windows x64)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
-            "preLaunchTask": "Build VideoGlitcher (Windows x64)",
+            "preLaunchTask": "Build video_glitcher (Windows x64)",
             "cwd": "${workspaceFolder}",
             "classPaths": [
                 "${workspaceFolder}/bin",
@@ -55,10 +55,10 @@
         },
         {
             "type": "java",
-            "name": "Run VideoGlitcher (Linux x64 bundled)",
+            "name": "Run video_glitcher (Linux x64 bundled)",
             "request": "launch",
             "mainClass": "tom.videoGlitcher.VideoGlitcher",
-            "preLaunchTask": "Build VideoGlitcher (Linux x64)",
+            "preLaunchTask": "Build video_glitcher (Linux x64)",
             "cwd": "${workspaceFolder}",
             "classPaths": [
                 "${workspaceFolder}/bin",
