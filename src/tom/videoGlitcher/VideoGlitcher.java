@@ -13,11 +13,11 @@ public class VideoGlitcher extends PApplet {
 
     private static LaunchOptions launchOptions = LaunchOptions.defaults();
     private static final float PLAYBACK_END_EPSILON_SECONDS = 0.05f;
-    private static final String PLAY_SYMBOL = "\u25B6";
-    private static final String PAUSE_SYMBOL = "\u23F8";
-    private static final String REWIND_TO_START_SYMBOL = "\u23EE";
-    private static final String LOOPING_LABEL = "Looping";
-    private static final String PLAY_ONCE_LABEL = "Play Once";
+    private static final String PLAY_LABEL = "PLAY";
+    private static final String PAUSE_LABEL = "PAUSE";
+    private static final String REWIND_TO_START_LABEL = "<<";
+    private static final String LOOPING_LABEL = "LOOP";
+    private static final String PLAY_ONCE_LABEL = "ONCE";
 
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
@@ -358,19 +358,19 @@ public class VideoGlitcher extends PApplet {
 
         Button rewindButton = cp5.addButton("rewindToStart")
                 .setPosition(x + 80, y)
-                .setSize(40, 30)
-                .setLabel(REWIND_TO_START_SYMBOL);
+                .setSize(44, 30)
+                .setLabel(REWIND_TO_START_LABEL);
         rewindButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
         pausePlayButton = cp5.addButton("pausePlay")
-                .setPosition(x + 128, y)
-                .setSize(40, 30)
-                .setLabel(PLAY_SYMBOL);
+                .setPosition(x + 132, y)
+                .setSize(72, 30)
+                .setLabel(PLAY_LABEL);
         pausePlayButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
         playbackModeButton = cp5.addButton("togglePlaybackMode")
-                .setPosition(x + 176, y)
-                .setSize(92, 30)
+                .setPosition(x + 212, y)
+                .setSize(56, 30)
                 .setLabel(LOOPING_LABEL);
         playbackModeButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
 
@@ -1216,7 +1216,7 @@ public class VideoGlitcher extends PApplet {
         if (pausePlayButton == null)
             return;
 
-        pausePlayButton.setLabel(video == null || paused ? PLAY_SYMBOL : PAUSE_SYMBOL);
+        pausePlayButton.setLabel(video == null || paused ? PLAY_LABEL : PAUSE_LABEL);
     }
 
     private void updatePlaybackModeButton() {
