@@ -189,7 +189,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - `H`: show or hide the HUD
 - `U`: show or hide the GUI
 - `E`: start or stop live interactive export
-- `P`: process the full clip from start to finish with the current settings
+- `P`: open a save dialog, then process the full clip from start to finish with the current settings
 - `S`: save a frame as PNG
 - `Up`: increase glitch intensity
 - `Down`: decrease glitch intensity
@@ -200,9 +200,9 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - Glitching starts disabled before the first video is loaded so the empty-state text stays readable.
 - After the first successful video load, glitching turns on automatically and then follows the user's chosen on/off state.
 - `Export Start` / `Export Stop` stay in the interactive lane: you can let the preview run, change settings on the fly, and manually finish the MP4.
-- `Process Full` snapshots the current glitch settings, rewinds to frame 0, renders the entire clip once, and finishes the MP4 automatically at the playback end.
+- `Process Full` opens a save dialog, snapshots the current glitch settings, rewinds to frame 0, renders the entire clip once, and finishes the MP4 automatically at the playback end.
 - If the fitted video does not fill the screen, black mattes are drawn around it so glitches stay confined to the visible video area.
-- The sketch runs in Processing present mode so fullscreen covers the macOS menu bar.
+- The app now calls `PApplet.hideMenuBar()` before entering Processing present mode so fullscreen explicitly covers the macOS menu bar.
 
 ## Notes
 

@@ -11,6 +11,14 @@ final class VideoGlitcherLogic {
         return base + "_glitched.mp4";
     }
 
+    static String ensureMp4Extension(String outputPath) {
+        if (outputPath == null || outputPath.isBlank()) {
+            return "glitched_export.mp4";
+        }
+
+        return outputPath.toLowerCase().endsWith(".mp4") ? outputPath : outputPath + ".mp4";
+    }
+
     static VideoFit computeVideoFit(int viewportWidth, int viewportHeight, int videoWidth, int videoHeight) {
         if (viewportWidth <= 0 || viewportHeight <= 0 || videoWidth <= 0 || videoHeight <= 0) {
             return new VideoFit(0, 0, 0, 0);

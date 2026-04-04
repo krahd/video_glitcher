@@ -28,6 +28,7 @@ public class VideoGlitcher extends PApplet {
             return;
         }
 
+        PApplet.hideMenuBar();
         PApplet.main(new String[] { "--present", VideoGlitcher.class.getName() });
     }
 
@@ -56,6 +57,7 @@ public class VideoGlitcher extends PApplet {
     private boolean showGUI = true;
     private boolean freezeManual = false;
     private boolean selectingVideo = false;
+    private boolean selectingProcessOutput = false;
     private ExportMode exportMode = ExportMode.NONE;
     private boolean exportReachedPlaybackEnd = false;
 
@@ -579,14 +581,41 @@ public class VideoGlitcher extends PApplet {
     }
 
     public void processVideo() {
-        startFullProcessExport();
+        promptForProcessOutput();
     }
 
     private void promptForVideo() {
-        if (selectingVideo || isFullProcessExportActive())
+        if (selectingVideo || selectingProcessOutput || isFullProcessExportActive())
             return;
         selectingVideo = true;
         selectInput("Select a video file:", "videoSelected");
+    }
+
+    private void promptForProcessOutput() {
+        if (exporting || !movieReady || video == null || selectingProcessOutput) {
+            return;
+        }
+
+        if (launchOptions.autoProcess()) {
+            startFullProcessExport();
+            return;
+        }
+
+        selectingProcessOutput = true;
+        statusLabel.setText("Status: choose where to save the processed video");
+        selectOutput("Save processed video as:", "processOutputSelected", new File(exportFilename));
+    }
+
+    public void processOutputSelected(File selection) {
+        selectingProcessOutput = false;
+
+        if (selection == null) {
+            statusLabel.setText("Status: full-process export cancelled");
+            return;
+        }
+
+        exportFilename = normalizeExportOutputPath(selection);
+        startFullProcessExport();
     }
 
     public void videoSelected(File selection) {
@@ -654,6 +683,10 @@ public class VideoGlitcher extends PApplet {
 
     private String makeExportFilename(String sourceName) {
         return VideoGlitcherLogic.makeExportFilename(sourceName);
+    }
+
+    private String normalizeExportOutputPath(File selection) {
+        return VideoGlitcherLogic.ensureMp4Extension(selection.getAbsolutePath());
     }
 
     private void computeVideoFit() {

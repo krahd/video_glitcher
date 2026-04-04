@@ -9,6 +9,7 @@ public final class VideoGlitcherLogicTest {
 
     public static void main(String[] args) {
         testMakeExportFilename();
+        testEnsureMp4Extension();
         testComputeVideoFitDoesNotUpscale();
         testComputeVideoFitLetterboxesWideVideo();
         testNormalizeRangesClampsMaximums();
@@ -29,6 +30,13 @@ public final class VideoGlitcherLogicTest {
         assertEquals("archive.final_glitched.mp4", VideoGlitcherLogic.makeExportFilename("archive.final.mp4"));
         assertEquals("README_glitched.mp4", VideoGlitcherLogic.makeExportFilename("README"));
         assertEquals(".hidden_glitched.mp4", VideoGlitcherLogic.makeExportFilename(".hidden"));
+    }
+
+    private static void testEnsureMp4Extension() {
+        assertEquals("/tmp/render.mp4", VideoGlitcherLogic.ensureMp4Extension("/tmp/render"));
+        assertEquals("/tmp/render.mp4", VideoGlitcherLogic.ensureMp4Extension("/tmp/render.mp4"));
+        assertEquals("/tmp/render.MP4", VideoGlitcherLogic.ensureMp4Extension("/tmp/render.MP4"));
+        assertEquals("glitched_export.mp4", VideoGlitcherLogic.ensureMp4Extension(""));
     }
 
     private static void testComputeVideoFitDoesNotUpscale() {
