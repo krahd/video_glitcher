@@ -2,16 +2,16 @@
 
 <table>
   <tr>
-    <td align="center"><strong>Original Boxy</strong></td>
-    <td align="center"><strong>Glitched Boxy</strong></td>
+    <td align="center"><strong>Before</strong></td>
+    <td align="center"><strong>After</strong></td>
   </tr>
   <tr>
-    <td><img src="docs/assets/video-glitcher-source.gif" alt="Original Boxy source clip" width="360"></td>
-    <td><img src="docs/assets/video-glitcher-glitched.gif" alt="Glitched Boxy export from video_glitcher" width="360"></td>
+    <td><img src="docs/assets/video-glitcher-source.gif" alt="Source clip" width="360"></td>
+    <td><img src="docs/assets/video-glitcher-glitched.gif" alt="Clip exported from video_glitcher" width="360"></td>
   </tr>
 </table>
 
-video_glitcher is a Java app built with Processing as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and exports the result as an MP4 in either live interactive mode or full-process mode.
+video_glitcher is a Java app built with [Processing](http://processing.org) as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and exports the result as an MP4 in either live interactive mode or full-process mode.
 
 Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_glitcher/)
 
