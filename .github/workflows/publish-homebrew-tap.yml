@@ -137,12 +137,12 @@ jobs:
             rm -f "Formula/${LEGACY_FORMULA_NAME}.rb"
           fi
 
-          if [ -z "$(git status --short -- "Formula/${FORMULA_NAME}.rb" "Formula/${LEGACY_FORMULA_NAME}.rb")" ]; then
+          if [ -z "$(git status --short -- Formula)" ]; then
             echo "Formula already up to date."
             exit 0
           fi
 
-          git add -A "Formula/${FORMULA_NAME}.rb" "Formula/${LEGACY_FORMULA_NAME}.rb"
+          git add -A Formula
           git commit -m "Update ${FORMULA_NAME} formula for ${RELEASE_TAG}"
 
           max_attempts=5
