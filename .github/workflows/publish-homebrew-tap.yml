@@ -1,0 +1,158 @@
+name: Publish Homebrew Tap
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to publish to krahd/homebrew-tap
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish-homebrew-tap:
+    runs-on: ubuntu-22.04
+    env:
+      FORMULA_NAME: video-glitcher
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag || '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tap token is configured
+        shell: bash
+        run: |
+          if [ -z "${HOMEBREW_TAP_TOKEN}" ]; then
+            echo "HOMEBREW_TAP_TOKEN is required to update krahd/homebrew-tap." >&2
+            exit 1
+          fi
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          elif [ -n "${INPUT_RELEASE_TAG}" ]; then
+            RELEASE_TAG="${INPUT_RELEASE_TAG}"
+          else
+            RELEASE_TAG="$(git tag --sort=-version:refname | head -n 1)"
+          fi
+
+          if [ -z "${RELEASE_TAG}" ]; then
+            echo "No release tag is available for Homebrew publishing." >&2
+            exit 1
+          fi
+
+          case "${RELEASE_TAG}" in
+            v*) ;;
+            *)
+              echo "Release tag must start with v: ${RELEASE_TAG}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "release_tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Wait for release assets
+        id: assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+        run: |
+          max_attempts=40
+          delay_seconds=15
+
+          for attempt in $(seq 1 "${max_attempts}"); do
+            RELEASE_JSON="$(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets 2>/dev/null || true)"
+
+            if [ -n "${RELEASE_JSON}" ]; then
+              MACOS_URL="$(printf '%s' "${RELEASE_JSON}" | jq -r '.assets[] | select(.name == "video_glitcher-macos-aarch64.zip") | .url' | head -n 1)"
+              MACOS_SHA256="$(printf '%s' "${RELEASE_JSON}" | jq -r '.assets[] | select(.name == "video_glitcher-macos-aarch64.zip") | .digest // empty' | head -n 1 | sed 's/^sha256://')"
+              LINUX_URL="$(printf '%s' "${RELEASE_JSON}" | jq -r '.assets[] | select(.name == "video_glitcher-linux-amd64.zip") | .url' | head -n 1)"
+              LINUX_SHA256="$(printf '%s' "${RELEASE_JSON}" | jq -r '.assets[] | select(.name == "video_glitcher-linux-amd64.zip") | .digest // empty' | head -n 1 | sed 's/^sha256://')"
+
+              if [ -n "${MACOS_URL}" ] && [ -n "${MACOS_SHA256}" ] && [ -n "${LINUX_URL}" ] && [ -n "${LINUX_SHA256}" ]; then
+                {
+                  echo "macos_url=${MACOS_URL}"
+                  echo "macos_sha256=${MACOS_SHA256}"
+                  echo "linux_url=${LINUX_URL}"
+                  echo "linux_sha256=${LINUX_SHA256}"
+                } >> "${GITHUB_OUTPUT}"
+                exit 0
+              fi
+            fi
+
+            echo "Waiting for release assets on ${RELEASE_TAG} (attempt ${attempt}/${max_attempts})..."
+            sleep "${delay_seconds}"
+          done
+
+          echo "Timed out waiting for video_glitcher-macos-aarch64.zip and video_glitcher-linux-amd64.zip on ${RELEASE_TAG}." >&2
+          exit 1
+
+      - name: Clone tap repo
+        shell: bash
+        run: |
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/krahd/homebrew-tap.git" tap-repo
+
+      - name: Render formula
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          MACOS_URL: ${{ steps.assets.outputs.macos_url }}
+          MACOS_SHA256: ${{ steps.assets.outputs.macos_sha256 }}
+          LINUX_URL: ${{ steps.assets.outputs.linux_url }}
+          LINUX_SHA256: ${{ steps.assets.outputs.linux_sha256 }}
+        run: |
+          mkdir -p tap-repo/Formula
+          python3 packaging/homebrew/render_homebrew_formula.py \
+            --release-tag "${RELEASE_TAG}" \
+            --macos-url "${MACOS_URL}" \
+            --macos-sha256 "${MACOS_SHA256}" \
+            --linux-url "${LINUX_URL}" \
+            --linux-sha256 "${LINUX_SHA256}" \
+            --output "tap-repo/Formula/${FORMULA_NAME}.rb"
+
+      - name: Commit and push formula update
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+        run: |
+          cd tap-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-files --error-unmatch "Formula/${FORMULA_NAME}.rb" >/dev/null 2>&1; then
+            if git diff --quiet -- "Formula/${FORMULA_NAME}.rb"; then
+              echo "Formula already up to date."
+              exit 0
+            fi
+          fi
+
+          git add "Formula/${FORMULA_NAME}.rb"
+          git commit -m "Update ${FORMULA_NAME} formula for ${RELEASE_TAG}"
+
+          max_attempts=5
+          for attempt in $(seq 1 "${max_attempts}"); do
+            if ! git pull --rebase origin main; then
+              echo "Rebase failed while preparing the tap update." >&2
+              git rebase --abort || true
+              exit 1
+            fi
+
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+
+          exit 1

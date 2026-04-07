@@ -328,6 +328,42 @@
             padding: 20px;
         }
 
+        .brew-callout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            gap: 18px;
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 22px;
+            background:
+                linear-gradient(135deg, rgba(255, 90, 54, 0.12), transparent 38%),
+                linear-gradient(225deg, rgba(39, 214, 196, 0.12), transparent 42%),
+                var(--panel-soft);
+        }
+
+        .brew-copy p {
+            margin: 12px 0 0;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .brew-command {
+            margin: 0;
+            padding: 18px;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            background: rgba(0, 0, 0, 0.36);
+            color: var(--ink);
+        }
+
+        .brew-command code {
+            display: block;
+            white-space: pre;
+            font: 500 0.95rem/1.7 "IBM Plex Mono", monospace;
+        }
+
         ol,
         ul {
             margin: 0;
@@ -452,7 +488,8 @@
             .fact-grid,
             .comparison-grid,
             .manual-grid,
-            .download-grid {
+            .download-grid,
+            .brew-callout {
                 grid-template-columns: 1fr;
             }
 
@@ -486,7 +523,7 @@
                 <span class="pill">Java 17+</span>
             </div>
             <div class="cta-row">
-                <a class="cta cta-primary" href="#download">Download</a>
+                <a class="cta cta-primary" href="#download">Install</a>
                 <a class="cta cta-secondary" href="https://github.com/krahd/video_glitcher">View Repository</a>
                 <a class="cta cta-secondary" href="https://github.com/krahd/video_glitcher/releases">Release Page</a>
             </div>
@@ -497,11 +534,11 @@
                 </article>
                 <article class="fact-card">
                     <div class="fact-label">Clients</div>
-                    <div class="fact-value">Portable desktop bundles for macOS Apple Silicon, Linux x64, and Windows x64.</div>
+                    <div class="fact-value">Homebrew install on macOS Apple Silicon and Linux x86_64, plus portable desktop bundles for macOS Apple Silicon, Linux x64, and Windows x64.</div>
                 </article>
                 <article class="fact-card">
                     <div class="fact-label">Releases</div>
-                    <div class="fact-value">Static GitHub release links are used here because the public site cannot rely on anonymous GitHub API calls for this repo.</div>
+                    <div class="fact-value">Install from `krahd/tap` with Homebrew or grab the portable release bundles directly from GitHub Releases.</div>
                 </article>
             </div>
         </section>
@@ -543,7 +580,7 @@
                 <div>
                     <h2>Instructions</h2>
                     <p class="section-copy">
-                        The workflow stays short: load, tune, preview, then choose either live export or full-process export. <code>ffmpeg</code> must be available on your system <code>PATH</code> for MP4 export.
+                        The workflow stays short: load, tune, preview, then choose either live export or full-process export. Homebrew installs bring in <code>ffmpeg</code> and <code>openjdk</code> automatically, while direct ZIP runs still expect <code>ffmpeg</code> on your system <code>PATH</code> for MP4 export.
                     </p>
                 </div>
             </div>
@@ -578,11 +615,20 @@
         <section class="section" id="download">
             <div class="section-head">
                 <div>
-                    <h2>Download</h2>
+                    <h2>Install / Download</h2>
                     <p class="section-copy">
-                        Static release links are shown directly here. The previous anonymous GitHub API lookup was removed because this repo returns 404 for public API requests, which caused the noisy release error in the page.
+                        Install from Homebrew first if you are on macOS Apple Silicon or Linux x86_64. Portable release links stay here as the manual fallback and the primary path for Windows.
                     </p>
                 </div>
+            </div>
+            <div class="brew-callout">
+                <div class="brew-copy">
+                    <span class="download-note">Homebrew Tap</span>
+                    <h3>Install from krahd/tap</h3>
+                    <p>Homebrew installs the matching prebuilt release bundle, adds `ffmpeg` plus `openjdk`, and exposes the <code>video_glitcher</code> command on macOS Apple Silicon and Linux x86_64.</p>
+                </div>
+                <pre class="brew-command"><code>brew tap krahd/tap && brew install krahd/tap/video-glitcher
+video_glitcher</code></pre>
             </div>
             <div class="grid download-grid">
                 <a class="download-card" href="https://github.com/krahd/video_glitcher/releases/latest/download/video_glitcher-macos-aarch64.zip">
@@ -633,10 +679,11 @@
                 </a>
             </div>
             <div class="download-meta">
-                If your browser or network context cannot reach the GitHub release URLs directly, open the release page first and download from there.
+                If your browser or network context cannot reach the GitHub release URLs directly, open the release page first and download from there. Windows users should use the ZIP bundle because the Homebrew tap only targets macOS Apple Silicon and Linux x86_64.
             </div>
             <div class="footer">
                 <p>Repository: <a href="https://github.com/krahd/video_glitcher">github.com/krahd/video_glitcher</a></p>
+                <p>Homebrew Tap: <a href="https://github.com/krahd/homebrew-tap">github.com/krahd/homebrew-tap</a></p>
                 <p>Releases: <a href="https://github.com/krahd/video_glitcher/releases">github.com/krahd/video_glitcher/releases</a></p>
             </div>
         </section>
