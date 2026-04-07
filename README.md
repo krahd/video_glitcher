@@ -2,7 +2,7 @@
 
 | Before | After |
 | --- | --- |
-| ![Source clip](docs/assets/video-glitcher-source.gif) | ![Clip exported from video_glitcher](docs/assets/video-glitcher-glitched.gif) |
+| ![Source clip](docs/assets/video_glitcher-source.gif) | ![Clip exported from video_glitcher](docs/assets/video_glitcher-glitched.gif) |
 
 video_glitcher is a Java app built with [Processing](http://processing.org) as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and exports the result as an MP4 in either live interactive mode or full-process mode.
 
@@ -17,7 +17,7 @@ The repository is self-contained and includes the Processing OpenGL jars needed 
 On macOS Apple Silicon and Linux x86_64, install `video_glitcher` from the `krahd/tap` Homebrew tap:
 
 ```sh
-brew tap krahd/tap && brew install krahd/tap/video-glitcher
+brew tap krahd/tap && brew install krahd/tap/video_glitcher
 video_glitcher
 ```
 
@@ -39,7 +39,7 @@ For version-pinned downloads and release-specific details, open the release page
 
 ## Project Layout
 
-- `Formula/video-glitcher.rb`: Homebrew formula snapshot synced to `krahd/homebrew-tap`
+- `Formula/video_glitcher.rb`: Homebrew formula snapshot synced to `krahd/homebrew-tap`
 - `src/tom/videoGlitcher/VideoGlitcher.java`: main application source
 - `video_glitcher.pde`: original Processing sketch version
 - `.vscode/launch.json`: debug launch configs for `video_glitcher` on macOS, Windows, and Linux
@@ -56,7 +56,7 @@ For version-pinned downloads and release-specific details, open the release page
 
 - Java 17 or newer
 - VS Code with Java support
-- Homebrew installs `ffmpeg` and `openjdk` automatically when you use `brew tap krahd/tap && brew install krahd/tap/video-glitcher`
+- Homebrew installs `ffmpeg` and `openjdk` automatically when you use `brew tap krahd/tap && brew install krahd/tap/video_glitcher`
 - `ffmpeg` on your `PATH` if you want MP4 export
 - Native video runtime files are already vendored for `macos-aarch64`, `macos-x86_64`, `linux-amd64`, and `windows-amd64`
 
@@ -230,7 +230,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - MP4 export depends on `ffmpeg` being installed and available on your `PATH`.
 - The macOS packaging task builds an `.app` image with the required jars and bundled Apple Silicon video natives.
 - Pushing a release tag like `v1.0.5` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
-- The `Publish Homebrew Tap` workflow waits for the macOS Apple Silicon and Linux x86_64 release ZIPs, renders `Formula/video-glitcher.rb`, and syncs it into `krahd/homebrew-tap` when the `HOMEBREW_TAP_TOKEN` repository secret is configured.
+- The `Publish Homebrew Tap` workflow waits for the macOS Apple Silicon and Linux x86_64 release ZIPs, renders `Formula/video_glitcher.rb`, syncs it into `krahd/homebrew-tap`, and removes the previous hyphenated formula file when the `HOMEBREW_TAP_TOKEN` repository secret is configured.
 
 ## Contributing
 

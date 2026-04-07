@@ -18,11 +18,11 @@ class VideoGlitcher < Formula
 
   def install
     if OS.mac? && !Hardware::CPU.arm?
-      odie "video-glitcher only supports macOS Apple Silicon via Homebrew"
+      odie "video_glitcher only supports macOS Apple Silicon via Homebrew"
     end
 
     if OS.linux? && !Hardware::CPU.intel?
-      odie "video-glitcher only supports Linux x86_64 via Homebrew"
+      odie "video_glitcher only supports Linux x86_64 via Homebrew"
     end
 
     release_dir = pkgshare/"video_glitcher"

@@ -18,7 +18,7 @@ jobs:
   publish-homebrew-tap:
     runs-on: ubuntu-22.04
     env:
-      FORMULA_NAME: video-glitcher
+      FORMULA_NAME: video_glitcher
       HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
       INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag || '' }}
 
@@ -128,18 +128,21 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
         run: |
           cd tap-repo
+          LEGACY_FORMULA_NAME="${FORMULA_NAME//_/-}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git ls-files --error-unmatch "Formula/${FORMULA_NAME}.rb" >/dev/null 2>&1; then
-            if git diff --quiet -- "Formula/${FORMULA_NAME}.rb"; then
-              echo "Formula already up to date."
-              exit 0
-            fi
+          if [ -f "Formula/${LEGACY_FORMULA_NAME}.rb" ]; then
+            rm -f "Formula/${LEGACY_FORMULA_NAME}.rb"
           fi
 
-          git add "Formula/${FORMULA_NAME}.rb"
+          if [ -z "$(git status --short -- "Formula/${FORMULA_NAME}.rb" "Formula/${LEGACY_FORMULA_NAME}.rb")" ]; then
+            echo "Formula already up to date."
+            exit 0
+          fi
+
+          git add -A "Formula/${FORMULA_NAME}.rb" "Formula/${LEGACY_FORMULA_NAME}.rb"
           git commit -m "Update ${FORMULA_NAME} formula for ${RELEASE_TAG}"
 
           max_attempts=5

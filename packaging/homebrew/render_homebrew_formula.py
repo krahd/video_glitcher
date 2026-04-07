@@ -26,11 +26,11 @@ FORMULA_TEMPLATE = """class VideoGlitcher < Formula
 
   def install
     if OS.mac? && !Hardware::CPU.arm?
-      odie \"video-glitcher only supports macOS Apple Silicon via Homebrew\"
+      odie \"video_glitcher only supports macOS Apple Silicon via Homebrew\"
     end
 
     if OS.linux? && !Hardware::CPU.intel?
-      odie \"video-glitcher only supports Linux x86_64 via Homebrew\"
+      odie \"video_glitcher only supports Linux x86_64 via Homebrew\"
     end
 
     release_dir = pkgshare/\"video_glitcher\"
@@ -76,16 +76,16 @@ end
 
 
 def parse_args() -> argparse.Namespace:
-  parser = argparse.ArgumentParser(
-    description="Render the asset-based Homebrew formula for video_glitcher."
-  )
-  parser.add_argument("--release-tag", required=True)
-  parser.add_argument("--macos-url", required=True)
-  parser.add_argument("--macos-sha256", required=True)
-  parser.add_argument("--linux-url", required=True)
-  parser.add_argument("--linux-sha256", required=True)
-  parser.add_argument("--output")
-  return parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Render the asset-based Homebrew formula for video_glitcher."
+    )
+    parser.add_argument("--release-tag", required=True)
+    parser.add_argument("--macos-url", required=True)
+    parser.add_argument("--macos-sha256", required=True)
+    parser.add_argument("--linux-url", required=True)
+    parser.add_argument("--linux-sha256", required=True)
+    parser.add_argument("--output")
+    return parser.parse_args()
 
 
 def normalize_sha256(value: str, label: str) -> str:
