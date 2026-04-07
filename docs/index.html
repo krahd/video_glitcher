@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>video_glitcher</title>
-    <meta name="description" content="Realtime video glitching built with Processing. Preview live, tune presets, or process a full clip end to end and export a corrupted MP4.">
+    <meta name="description" content="Realtime video glitching built with Processing. Preview live, tune digital or retro VHS and digicam presets, then export a corrupted MP4.">
     <style>
         @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
@@ -513,12 +513,13 @@
             <h1>video_glitcher</h1>
             <p class="tagline">
                 Load a clip, break it on purpose, and export the result as a glitched MP4.
-                The app runs as a <a href="https://processing.org/">Processing</a> desktop sketch with realtime preview, live export, and a full-process mode that locks the current settings and renders the clip from start to finish.
+                The app runs as a <a href="https://processing.org/">Processing</a> desktop sketch with realtime preview, live export, a dedicated retro control bank for VHS and old-digicam distortion, and a full-process mode that locks the current settings and renders the clip from start to finish.
             </p>
             <div class="hero-meta">
-                <span class="pill">v1.0.5</span>
+                <span class="pill">v1.1.0</span>
                 <span class="pill">Fullscreen preview</span>
                 <span class="pill">Preset-driven damage</span>
+                <span class="pill">VHS + digicam retro modes</span>
                 <span class="pill">Live + full-process export</span>
                 <span class="pill">Java 17+</span>
             </div>
@@ -530,7 +531,7 @@
             <div class="fact-grid">
                 <article class="fact-card">
                     <div class="fact-label">Status</div>
-                    <div class="fact-value">v1.0.5 adds a dedicated full-process export button alongside the original live interactive export flow.</div>
+                    <div class="fact-value">v1.1.0 adds a retro distortion bank with VHS and old-digicam presets, six analogue-style toggles, and compact or expanded control modes.</div>
                 </article>
                 <article class="fact-card">
                     <div class="fact-label">Clients</div>
@@ -588,8 +589,9 @@
                 <article class="manual-card">
                     <ol>
                         <li>Launch the app and load a video with the button, a click on the empty state, or the <code>L</code> key.</li>
-                        <li>Pick a preset such as <code>Cinematic</code>, <code>Broken Codec</code>, or <code>Extreme</code>.</li>
+                        <li>Pick a preset such as <code>Cinematic</code>, <code>VHS Decay</code>, <code>Old Digicam</code>, or <code>Extreme</code>.</li>
                         <li>Tune intensity, frequency, burst timing, and individual effect toggles while the preview is running.</li>
+                        <li>Open the retro section in compact mode for quick analogue toggles, or switch to expanded mode for per-effect VHS and digicam sliders.</li>
                         <li>Use <code>G</code> to toggle glitching, <code>Space</code> to pause, and <code>F</code> to freeze on a frame.</li>
                         <li>Use <code>Export Start</code> or <code>E</code> for live export when you want to keep tweaking parameters while the clip plays.</li>
                         <li>Use <code>Process Full</code> or <code>P</code> when you want a save dialog, a frozen snapshot of the current settings, and a full automatic render from frame 0 to the clip end.</li>
@@ -607,6 +609,10 @@
                         <span class="control-chip"><code>E</code> live export</span>
                         <span class="control-chip"><code>P</code> save + process full clip</span>
                         <span class="control-chip"><code>S</code> save PNG frame</span>
+                        <span class="control-chip">Retro: compact / expanded</span>
+                        <span class="control-chip">Tracking Tear / Head Switch</span>
+                        <span class="control-chip">Chroma Drift / Scanline Wobble</span>
+                        <span class="control-chip">Vertical Smear / Column Drift</span>
                     </div>
                 </article>
             </div>

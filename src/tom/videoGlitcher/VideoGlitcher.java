@@ -8,6 +8,7 @@ import controlP5.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 
 public class VideoGlitcher extends PApplet {
 
@@ -20,6 +21,15 @@ public class VideoGlitcher extends PApplet {
     private static final String PLAY_ONCE_LABEL = "ONCE";
     private static final String PROCESS_FULL_LABEL = "Process Full";
     private static final String PROCESSING_LABEL = "Processing...";
+        private static final String[] PRESET_NAMES = {
+            "Subtle",
+            "Cinematic",
+            "Corrupted File",
+            "Broken Codec",
+            "Extreme",
+            "VHS Decay",
+            "Old Digicam"
+        };
 
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
@@ -83,6 +93,22 @@ public class VideoGlitcher extends PApplet {
     private boolean useMicroJitter = true;
     private boolean useZoomWobble = true;
 
+    private float retroAmount = 0.28f;
+    private float retroJitter = 0.24f;
+    private float trackingDrift = 0.32f;
+    private float headSwitchHeight = 0.10f;
+    private float chromaOffset = 0.22f;
+    private float smearStrength = 0.20f;
+    private float columnDriftAmount = 0.24f;
+
+    private boolean useTrackingTear = false;
+    private boolean useHeadSwitchBand = false;
+    private boolean useChromaDrift = false;
+    private boolean useScanlineWobble = false;
+    private boolean useVerticalSmear = false;
+    private boolean useColumnDrift = false;
+    private boolean retroControlsExpanded = false;
+
     private boolean glitchActive = false;
     private int glitchFramesLeft = 0;
     private int calmFramesLeft = 0;
@@ -104,8 +130,11 @@ public class VideoGlitcher extends PApplet {
     private Button interactiveExportButton;
     private Button stopExportButton;
     private Button processVideoButton;
+    private Button retroModeButton;
     private DropdownList presetList;
     private Textlabel statusLabel;
+    private Textlabel retroSectionLabel;
+    private final HashMap<String, Textlabel> guiLabels = new HashMap<>();
 
     private boolean triedVideoUriFallback = false;
     private boolean smokeExportStarted = false;
@@ -122,6 +151,7 @@ public class VideoGlitcher extends PApplet {
     private int sliderH = 16;
     private int labelX = guiX + sliderW + 72;
     private int rowGap = 24;
+    private int retroSectionY = 0;
 
     @Override
     public void settings() {
@@ -313,13 +343,12 @@ public class VideoGlitcher extends PApplet {
     private void setupGui() {
         cp5 = new ControlP5(this);
         cp5.setAutoDraw(false);
+        guiLabels.clear();
 
         int x = guiX;
         int y = guiY;
 
-        cp5.addTextlabel("guiTitle")
-                .setPosition(x, y)
-                .setText("GLITCH CONTROLS");
+        addGuiLabel("guiTitle", x, y, "GLITCH CONTROLS");
         y += 24;
 
         presetList = cp5.addDropdownList("preset")
@@ -328,11 +357,9 @@ public class VideoGlitcher extends PApplet {
                 .setBarHeight(24)
                 .setItemHeight(22);
 
-        presetList.addItem("Subtle", 0);
-        presetList.addItem("Cinematic", 1);
-        presetList.addItem("Corrupted File", 2);
-        presetList.addItem("Broken Codec", 3);
-        presetList.addItem("Extreme", 4);
+        for (int i = 0; i < PRESET_NAMES.length; i++) {
+            presetList.addItem(PRESET_NAMES[i], i);
+        }
 
         y += 196;
 
@@ -375,6 +402,28 @@ public class VideoGlitcher extends PApplet {
         y += 22;
         addToggleRow("useZoomWobble", "Zoom Wobble", x, y);
         y += 30;
+
+        retroSectionY = y;
+        retroSectionLabel = addGuiLabel("retroSection", x, y, "RETRO DISTORTIONS");
+        retroModeButton = cp5.addButton("toggleRetroControlsMode")
+            .setPosition(x, y)
+            .setSize(126, 24)
+            .setLabel("Retro: Compact");
+        retroModeButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+
+        addSliderRow("retroAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, retroAmount, "Retro Amount");
+        addSliderRow("retroJitter", x, y, sliderW, sliderH, 0.0f, 1.0f, retroJitter, "Retro Jitter");
+        addToggleRow("useTrackingTear", "Tracking Tear", x, y);
+        addToggleRow("useHeadSwitchBand", "Head Switch", x, y);
+        addToggleRow("useChromaDrift", "Chroma Drift", x, y);
+        addToggleRow("useScanlineWobble", "Scanline Wobble", x, y);
+        addToggleRow("useVerticalSmear", "Vertical Smear", x, y);
+        addToggleRow("useColumnDrift", "Column Drift", x, y);
+        addSliderRow("trackingDrift", x, y, sliderW, sliderH, 0.0f, 1.0f, trackingDrift, "Tracking Drift");
+        addSliderRow("headSwitchHeight", x, y, sliderW, sliderH, 0.0f, 1.0f, headSwitchHeight, "Head Switch Height");
+        addSliderRow("chromaOffset", x, y, sliderW, sliderH, 0.0f, 1.0f, chromaOffset, "Chroma Offset");
+        addSliderRow("smearStrength", x, y, sliderW, sliderH, 0.0f, 1.0f, smearStrength, "Smear Strength");
+        addSliderRow("columnDriftAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, columnDriftAmount, "Column Drift");
 
         Button bLoad = cp5.addButton("loadVideo")
                 .setPosition(x, y)
@@ -434,10 +483,19 @@ public class VideoGlitcher extends PApplet {
                 .setPosition(x, y)
                 .setText("Status: no video loaded");
 
+    refreshRetroLayout();
         updatePausePlayButton();
         updatePlaybackModeButton();
         updateGlitchButton();
         updateExportButtons();
+    }
+
+    private Textlabel addGuiLabel(String name, int x, int y, String text) {
+    Textlabel label = cp5.addTextlabel(name)
+        .setPosition(x, y)
+        .setText(text);
+    guiLabels.put(name, label);
+    return label;
     }
 
     private void addSliderRow(String name, int x, int y, int w, int h, float minV, float maxV, float value,
@@ -451,9 +509,7 @@ public class VideoGlitcher extends PApplet {
         s.getCaptionLabel().setVisible(false);
         s.getValueLabel().align(ControlP5.RIGHT_OUTSIDE, ControlP5.CENTER).setPaddingX(6);
 
-        cp5.addTextlabel("lbl_" + name)
-                .setPosition(labelX, y + 1)
-                .setText(label);
+    addGuiLabel("lbl_" + name, labelX, y + 1, label);
     }
 
     private void addToggleRow(String name, String label, int x, int y) {
@@ -464,9 +520,134 @@ public class VideoGlitcher extends PApplet {
 
         t.getCaptionLabel().setVisible(false);
 
-        cp5.addTextlabel("lbl_" + name)
-                .setPosition(x + 28, y + 1)
-                .setText(label);
+        addGuiLabel("lbl_" + name, x + 28, y + 1, label);
+    }
+
+    private void setControlVisible(String name, boolean visible) {
+        Controller<?> controller = cp5.getController(name);
+        if (controller != null) {
+            controller.setVisible(visible);
+        }
+
+        Textlabel label = guiLabels.get("lbl_" + name);
+        if (label != null) {
+            label.setVisible(visible);
+        }
+    }
+
+    private void setRowPosition(String name, int x, int y, boolean toggleRow) {
+        Controller<?> controller = cp5.getController(name);
+        if (controller != null) {
+            controller.setPosition(x, y);
+        }
+
+        Textlabel label = guiLabels.get("lbl_" + name);
+        if (label != null) {
+            label.setPosition(toggleRow ? x + 28 : labelX, y + 1);
+        }
+    }
+
+    private int layoutSliderRow(String name, int x, int y, boolean visible) {
+        setControlVisible(name, visible);
+        if (visible) {
+            setRowPosition(name, x, y, false);
+            return y + rowGap;
+        }
+        return y;
+    }
+
+    private int layoutToggleRow(String name, int x, int y, boolean visible) {
+        setControlVisible(name, visible);
+        if (visible) {
+            setRowPosition(name, x, y, true);
+            return y + 22;
+        }
+        return y;
+    }
+
+    private void refreshRetroLayout() {
+        if (cp5 == null) {
+            return;
+        }
+
+        int x = guiX;
+        int y = retroSectionY;
+
+        if (retroSectionLabel != null) {
+            retroSectionLabel.setPosition(x, y).setVisible(true);
+        }
+        if (retroModeButton != null) {
+            retroModeButton.setPosition(x + 156, y - 4);
+        }
+        updateRetroModeButton();
+
+        y += 28;
+        y = layoutSliderRow("retroAmount", x, y, true);
+        y = layoutSliderRow("retroJitter", x, y, true);
+        y = layoutToggleRow("useTrackingTear", x, y, true);
+        y = layoutToggleRow("useHeadSwitchBand", x, y, true);
+        y = layoutToggleRow("useChromaDrift", x, y, true);
+        y = layoutToggleRow("useScanlineWobble", x, y, true);
+        y = layoutToggleRow("useVerticalSmear", x, y, true);
+        y = layoutToggleRow("useColumnDrift", x, y, true);
+        y += 8;
+
+        y = layoutSliderRow("trackingDrift", x, y, retroControlsExpanded);
+        y = layoutSliderRow("headSwitchHeight", x, y, retroControlsExpanded);
+        y = layoutSliderRow("chromaOffset", x, y, retroControlsExpanded);
+        y = layoutSliderRow("smearStrength", x, y, retroControlsExpanded);
+        y = layoutSliderRow("columnDriftAmount", x, y, retroControlsExpanded);
+        y += 22;
+
+        Controller<?> loadVideoButton = cp5.getController("loadVideo");
+        if (loadVideoButton != null) {
+            loadVideoButton.setPosition(x, y);
+        }
+
+        Controller<?> rewindButton = cp5.getController("rewindToStart");
+        if (rewindButton != null) {
+            rewindButton.setPosition(x + 80, y);
+        }
+
+        if (pausePlayButton != null) {
+            pausePlayButton.setPosition(x + 132, y);
+        }
+
+        if (playbackModeButton != null) {
+            playbackModeButton.setPosition(x + 212, y);
+        }
+
+        y += 38;
+
+        if (glitchToggleButton != null) {
+            glitchToggleButton.setPosition(x, y);
+        }
+        if (interactiveExportButton != null) {
+            interactiveExportButton.setPosition(x + 96, y);
+        }
+        if (stopExportButton != null) {
+            stopExportButton.setPosition(x + 200, y);
+        }
+
+        y += 38;
+
+        if (processVideoButton != null) {
+            processVideoButton.setPosition(x, y);
+        }
+
+        y += 42;
+
+        if (statusLabel != null) {
+            statusLabel.setPosition(x, y);
+        }
+
+        panelH = y - panelY + 44;
+    }
+
+    private void updateRetroModeButton() {
+        if (retroModeButton != null) {
+            retroModeButton.setLabel(retroControlsExpanded ? "Retro: Expanded" : "Retro: Compact");
+        }
     }
 
     private boolean getToggleValue(String name) {
@@ -492,6 +673,18 @@ public class VideoGlitcher extends PApplet {
             return useMicroJitter;
         if (name.equals("useZoomWobble"))
             return useZoomWobble;
+        if (name.equals("useTrackingTear"))
+            return useTrackingTear;
+        if (name.equals("useHeadSwitchBand"))
+            return useHeadSwitchBand;
+        if (name.equals("useChromaDrift"))
+            return useChromaDrift;
+        if (name.equals("useScanlineWobble"))
+            return useScanlineWobble;
+        if (name.equals("useVerticalSmear"))
+            return useVerticalSmear;
+        if (name.equals("useColumnDrift"))
+            return useColumnDrift;
         return false;
     }
 
@@ -502,16 +695,21 @@ public class VideoGlitcher extends PApplet {
 
         if (e.isFrom(presetList)) {
             int v = (int) e.getValue();
-            if (v == 0)
-                applyPreset("Subtle");
-            else if (v == 1)
-                applyPreset("Cinematic");
-            else if (v == 2)
-                applyPreset("Corrupted File");
-            else if (v == 3)
-                applyPreset("Broken Codec");
-            else if (v == 4)
-                applyPreset("Extreme");
+            if (v >= 0 && v < PRESET_NAMES.length) {
+                applyPreset(PRESET_NAMES[v]);
+            }
+        }
+    }
+
+    public void toggleRetroControlsMode() {
+        if (isFullProcessExportActive()) {
+            return;
+        }
+
+        retroControlsExpanded = !retroControlsExpanded;
+        refreshRetroLayout();
+        if (statusLabel != null) {
+            statusLabel.setText("Status: retro controls " + (retroControlsExpanded ? "expanded" : "compact"));
         }
     }
 
@@ -826,7 +1024,7 @@ public class VideoGlitcher extends PApplet {
 
     private void applyRandomGlitchStack() {
         RenderSettings settings = activeRenderSettings();
-        int layers = (int) random(2, 6);
+        int layers = (int) random(2, 7 + settings.retroAmount() * 2.0f);
 
         for (int i = 0; i < layers; i++) {
             int effect = pickEnabledEffect();
@@ -853,6 +1051,18 @@ public class VideoGlitcher extends PApplet {
                 whiteFlashOrBlackout();
             else if (effect == 9)
                 freezeStutter();
+            else if (effect == 10)
+                trackingTear();
+            else if (effect == 11)
+                headSwitchBand();
+            else if (effect == 12)
+                chromaDrift();
+            else if (effect == 13)
+                scanlineWobble();
+            else if (effect == 14)
+                verticalSmear();
+            else if (effect == 15)
+                columnDrift();
         }
 
         if (random(1) < 0.80f)
@@ -887,6 +1097,18 @@ public class VideoGlitcher extends PApplet {
             choices.append(8);
         if (settings.useFreeze())
             choices.append(9);
+        if (settings.useTrackingTear())
+            choices.append(10);
+        if (settings.useHeadSwitchBand())
+            choices.append(11);
+        if (settings.useChromaDrift())
+            choices.append(12);
+        if (settings.useScanlineWobble())
+            choices.append(13);
+        if (settings.useVerticalSmear())
+            choices.append(14);
+        if (settings.useColumnDrift())
+            choices.append(15);
 
         if (choices.size() == 0)
             return -1;
@@ -1106,6 +1328,145 @@ public class VideoGlitcher extends PApplet {
         freezeFramesLeft = (int) random(1, 3);
     }
 
+    private void trackingTear() {
+        RenderSettings settings = activeRenderSettings();
+        int x0 = (int) drawX;
+        int y0 = (int) drawY;
+        int w0 = (int) drawW;
+        int h0 = (int) drawH;
+        float amplitude = (28.0f + 220.0f * settings.trackingDrift()) * (0.35f + settings.retroAmount());
+        int bands = max(1, 1 + (int) (settings.retroAmount() * 4.0f));
+
+        for (int i = 0; i < bands; i++) {
+            int bandH = max(4, (int) (h0 * random(0.018f, 0.090f) * (0.60f + settings.retroAmount())));
+            int y = y0 + (int) random(max(1, h0 - bandH));
+            int dx = (int) random(-amplitude, amplitude);
+            copy(x0, y, w0, bandH, x0 + dx, y, w0, bandH);
+
+            stroke(255, random(26, 84));
+            line(x0, y, x0 + w0, y);
+            if (random(1) < 0.55f) {
+                stroke(0, random(18, 56));
+                line(x0, y + bandH, x0 + w0, y + bandH);
+            }
+        }
+    }
+
+    private void headSwitchBand() {
+        RenderSettings settings = activeRenderSettings();
+        int x0 = (int) drawX;
+        int y0 = (int) drawY;
+        int w0 = (int) drawW;
+        int h0 = (int) drawH;
+        int bandH = max(10, (int) (h0 * (0.04f + settings.headSwitchHeight() * 0.22f)));
+        int bandY = y0 + h0 - bandH;
+        float offsetRange = 24.0f + 180.0f * settings.retroJitter();
+
+        noStroke();
+        fill(0, 24 + settings.retroAmount() * 70.0f);
+        rect(x0, bandY, w0, bandH);
+
+        for (int y = bandY; y < bandY + bandH; y += 2) {
+            int stripH = min(2, bandY + bandH - y);
+            int dx = (int) random(-offsetRange, offsetRange);
+            copy(x0, y, w0, stripH, x0 + dx, y, w0, stripH);
+
+            if (random(1) < 0.38f) {
+                stroke(255, random(20, 70));
+                line(x0, y, x0 + w0, y);
+            }
+        }
+
+        for (int i = 0; i < max(1, (int) (settings.retroAmount() * 6.0f)); i++) {
+            noStroke();
+            fill(random(255), random(255), random(255), random(12, 36));
+            rect(x0 + random(w0), bandY + random(bandH), random(18, 72), random(1, 4));
+        }
+    }
+
+    private void chromaDrift() {
+        RenderSettings settings = activeRenderSettings();
+        float drift = (3.0f + 24.0f * settings.chromaOffset()) * (0.50f + settings.retroAmount());
+        float verticalJitter = 1.0f + settings.retroJitter() * 5.0f;
+
+        blendMode(ADD);
+
+        tint(255, 70, 40, random(26, 82));
+        image(video, drawX - drift, drawY + random(-verticalJitter, verticalJitter), drawW, drawH);
+
+        tint(40, 170, 255, random(28, 92));
+        image(video, drawX + drift * 0.75f, drawY + random(-verticalJitter, verticalJitter), drawW, drawH);
+
+        noTint();
+        blendMode(BLEND);
+    }
+
+    private void scanlineWobble() {
+        RenderSettings settings = activeRenderSettings();
+        int x0 = (int) drawX;
+        int y0 = (int) drawY;
+        int w0 = (int) drawW;
+        int h0 = (int) drawH;
+        float amplitude = 1.5f + settings.retroAmount() * 14.0f;
+        float phaseScale = 0.035f + settings.chromaOffset() * 0.090f;
+        float jitter = 1.0f + settings.retroJitter() * 5.0f;
+
+        for (int y = y0; y < y0 + h0; y += 2) {
+            float phase = frameCount * 0.22f + (y - y0) * phaseScale;
+            int dx = (int) (sin(phase) * amplitude + random(-jitter, jitter));
+            int stripH = min(2, y0 + h0 - y);
+            copy(x0, y, w0, stripH, x0 + dx, y, w0, stripH);
+        }
+    }
+
+    private void verticalSmear() {
+        RenderSettings settings = activeRenderSettings();
+        int x0 = (int) drawX;
+        int y0 = (int) drawY;
+        int w0 = (int) drawW;
+        int h0 = (int) drawH;
+        int columns = max(1, 1 + (int) (settings.smearStrength() * 7.0f));
+
+        for (int i = 0; i < columns; i++) {
+            int colW = max(2, (int) random(2, 10 + settings.smearStrength() * 18.0f));
+            int sx = x0 + (int) random(max(1, w0 - colW));
+            int sy = y0 + (int) random(max(1.0f, h0 * 0.35f));
+            int sampleH = max(8, (int) random(8, max(9.0f, h0 * 0.18f)));
+            sampleH = min(sampleH, y0 + h0 - sy);
+            int stretchedH = min(y0 + h0 - sy, max(sampleH, (int) (sampleH * (2.0f + settings.smearStrength() * 4.0f))));
+
+            copy(sx, sy, colW, sampleH, sx, sy, colW, stretchedH);
+
+            noStroke();
+            fill(255, random(8, 28));
+            rect(sx, sy, colW, stretchedH);
+        }
+    }
+
+    private void columnDrift() {
+        RenderSettings settings = activeRenderSettings();
+        int x0 = (int) drawX;
+        int y0 = (int) drawY;
+        int w0 = (int) drawW;
+        int h0 = (int) drawH;
+        int columns = max(2, 2 + (int) (settings.columnDriftAmount() * 10.0f));
+        float offsetRange = (10.0f + 90.0f * settings.columnDriftAmount()) * (0.45f + settings.retroAmount());
+
+        for (int i = 0; i < columns; i++) {
+            int colW = max(3, (int) random(4, 12 + settings.columnDriftAmount() * 20.0f));
+            int sx = x0 + (int) random(max(1, w0 - colW));
+            int dy = (int) random(-offsetRange, offsetRange);
+
+            copy(sx, y0, colW, h0, sx, y0 + dy, colW, h0);
+
+            if (random(1) < 0.35f) {
+                noStroke();
+                fill(0, random(8, 24));
+                rect(sx, y0, colW, h0);
+            }
+        }
+    }
+
     private void flickerNoise() {
         float activeGlitchIntensity = activeRenderSettings().glitchIntensity();
         noStroke();
@@ -1167,8 +1528,58 @@ public class VideoGlitcher extends PApplet {
         calmMaxFrames = preset.calmMaxFrames();
         subtleDamageChance = preset.subtleDamageChance();
         burstChance = preset.burstChance();
+        retroAmount = preset.retroAmount();
+        retroJitter = preset.retroJitter();
+        trackingDrift = preset.trackingDrift();
+        headSwitchHeight = preset.headSwitchHeight();
+        chromaOffset = preset.chromaOffset();
+        smearStrength = preset.smearStrength();
+        columnDriftAmount = preset.columnDriftAmount();
+
+        useTrackingTear = preset.useTrackingTear();
+        useHeadSwitchBand = preset.useHeadSwitchBand();
+        useChromaDrift = preset.useChromaDrift();
+        useScanlineWobble = preset.useScanlineWobble();
+        useVerticalSmear = preset.useVerticalSmear();
+        useColumnDrift = preset.useColumnDrift();
+
+        applyPresetEffectDefaults(name);
 
         syncGuiValues();
+    }
+
+    private void applyPresetEffectDefaults(String name) {
+        useRGBSplit = true;
+        useSlices = true;
+        useBlocks = true;
+        useBars = true;
+        useDropouts = true;
+        useGhosts = true;
+        useFreeze = true;
+        useScanBursts = true;
+        useFlash = true;
+        useMicroJitter = true;
+        useZoomWobble = true;
+
+        if ("VHS Decay".equals(name)) {
+            useBlocks = false;
+            useBars = false;
+            useFreeze = false;
+            useFlash = false;
+            return;
+        }
+
+        if ("Old Digicam".equals(name)) {
+            useSlices = false;
+            useBlocks = false;
+            useBars = false;
+            useDropouts = false;
+            useGhosts = false;
+            useFreeze = false;
+            useScanBursts = false;
+            useFlash = false;
+            useZoomWobble = false;
+        }
     }
 
     private void syncGuiValues() {
@@ -1180,6 +1591,13 @@ public class VideoGlitcher extends PApplet {
         cp5.getController("calmMaxFrames").setValue(calmMaxFrames);
         cp5.getController("subtleDamageChance").setValue(subtleDamageChance);
         cp5.getController("burstChance").setValue(burstChance);
+        cp5.getController("retroAmount").setValue(retroAmount);
+        cp5.getController("retroJitter").setValue(retroJitter);
+        cp5.getController("trackingDrift").setValue(trackingDrift);
+        cp5.getController("headSwitchHeight").setValue(headSwitchHeight);
+        cp5.getController("chromaOffset").setValue(chromaOffset);
+        cp5.getController("smearStrength").setValue(smearStrength);
+        cp5.getController("columnDriftAmount").setValue(columnDriftAmount);
 
         cp5.getController("useRGBSplit").setValue(useRGBSplit ? 1 : 0);
         cp5.getController("useSlices").setValue(useSlices ? 1 : 0);
@@ -1192,6 +1610,13 @@ public class VideoGlitcher extends PApplet {
         cp5.getController("useFlash").setValue(useFlash ? 1 : 0);
         cp5.getController("useMicroJitter").setValue(useMicroJitter ? 1 : 0);
         cp5.getController("useZoomWobble").setValue(useZoomWobble ? 1 : 0);
+        cp5.getController("useTrackingTear").setValue(useTrackingTear ? 1 : 0);
+        cp5.getController("useHeadSwitchBand").setValue(useHeadSwitchBand ? 1 : 0);
+        cp5.getController("useChromaDrift").setValue(useChromaDrift ? 1 : 0);
+        cp5.getController("useScanlineWobble").setValue(useScanlineWobble ? 1 : 0);
+        cp5.getController("useVerticalSmear").setValue(useVerticalSmear ? 1 : 0);
+        cp5.getController("useColumnDrift").setValue(useColumnDrift ? 1 : 0);
+        updateRetroModeButton();
     }
 
     public void startExport() {
@@ -1481,6 +1906,12 @@ public class VideoGlitcher extends PApplet {
         if (exporting) {
             stopExport();
         }
+        paused = true;
+        movieReady = false;
+        pausedFrame = null;
+        frozenFrame = null;
+        previousFrame = null;
+        releaseVideo();
         dispose();
         System.exit(success ? 0 : 1);
     }
@@ -1527,7 +1958,20 @@ public class VideoGlitcher extends PApplet {
                 useScanBursts,
                 useFlash,
                 useMicroJitter,
-                useZoomWobble);
+                useZoomWobble,
+                retroAmount,
+                retroJitter,
+                trackingDrift,
+                headSwitchHeight,
+                chromaOffset,
+                smearStrength,
+                columnDriftAmount,
+                useTrackingTear,
+                useHeadSwitchBand,
+                useChromaDrift,
+                useScanlineWobble,
+                useVerticalSmear,
+                useColumnDrift);
     }
 
     private RenderSettings activeRenderSettings() {
@@ -1554,7 +1998,20 @@ public class VideoGlitcher extends PApplet {
             boolean useScanBursts,
             boolean useFlash,
             boolean useMicroJitter,
-            boolean useZoomWobble) {
+                boolean useZoomWobble,
+                float retroAmount,
+                float retroJitter,
+                float trackingDrift,
+                float headSwitchHeight,
+                float chromaOffset,
+                float smearStrength,
+                float columnDriftAmount,
+                boolean useTrackingTear,
+                boolean useHeadSwitchBand,
+                boolean useChromaDrift,
+                boolean useScanlineWobble,
+                boolean useVerticalSmear,
+                boolean useColumnDrift) {
     }
 
     private enum ExportMode {
@@ -1639,6 +2096,14 @@ public class VideoGlitcher extends PApplet {
                     return "Broken Codec";
                 case "extreme":
                     return "Extreme";
+                case "vhs decay":
+                case "vhs-decay":
+                case "vhs_decay":
+                    return "VHS Decay";
+                case "old digicam":
+                case "old-digicam":
+                case "old_digicam":
+                    return "Old Digicam";
                 default:
                     return "Cinematic";
             }

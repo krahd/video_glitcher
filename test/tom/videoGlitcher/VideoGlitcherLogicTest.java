@@ -140,13 +140,29 @@ public final class VideoGlitcherLogicTest {
     private static void testPresetValues() {
         VideoGlitcherLogic.PresetValues cinematic = VideoGlitcherLogic.presetForName("Cinematic");
         VideoGlitcherLogic.PresetValues extreme = VideoGlitcherLogic.presetForName("Extreme");
+        VideoGlitcherLogic.PresetValues vhsDecay = VideoGlitcherLogic.presetForName("VHS Decay");
+        VideoGlitcherLogic.PresetValues oldDigicam = VideoGlitcherLogic.presetForName("Old Digicam");
 
         assertNotNull(cinematic, "Cinematic preset should exist");
         assertNotNull(extreme, "Extreme preset should exist");
+        assertNotNull(vhsDecay, "VHS Decay preset should exist");
+        assertNotNull(oldDigicam, "Old Digicam preset should exist");
         assertFloatEquals(0.85f, cinematic.glitchIntensity());
         assertFloatEquals(0.55f, cinematic.glitchFrequency());
+        assertFloatEquals(0.28f, cinematic.retroAmount());
+        assertFalse(cinematic.useTrackingTear(), "Cinematic preset should leave retro effects disabled by default");
         assertFloatEquals(1.55f, extreme.glitchIntensity());
         assertFloatEquals(0.38f, extreme.burstChance());
+        assertFloatEquals(0.92f, vhsDecay.retroAmount());
+        assertTrue(vhsDecay.useTrackingTear(), "VHS Decay should enable tracking tear");
+        assertTrue(vhsDecay.useHeadSwitchBand(), "VHS Decay should enable head-switch banding");
+        assertTrue(vhsDecay.useScanlineWobble(), "VHS Decay should enable scanline wobble");
+        assertFalse(vhsDecay.useVerticalSmear(), "VHS Decay should not enable digicam smear");
+        assertFloatEquals(0.72f, oldDigicam.glitchIntensity());
+        assertFloatEquals(0.92f, oldDigicam.columnDriftAmount());
+        assertTrue(oldDigicam.useVerticalSmear(), "Old Digicam should enable vertical smear");
+        assertTrue(oldDigicam.useColumnDrift(), "Old Digicam should enable column drift");
+        assertFalse(oldDigicam.useHeadSwitchBand(), "Old Digicam should not enable VHS head-switch banding");
     }
 
     private static void testUnknownPresetReturnsNull() {

@@ -101,6 +101,8 @@ Available tasks:
 
 The load, export, and process smoke tasks generate a short sample clip with `ffmpeg` and launch the app with `--smoke-test`. The load task validates the video pipeline without requiring interaction. The export task exercises the live interactive ffmpeg-backed export path. The process task runs the full-clip end-to-end mode and exits non-zero if the automatic export does not finish cleanly. The shipped command uses a longer smoke timeout because a heavy preset can render slower than realtime.
 
+The smoke commands also accept the new retro presets, including `--preset=vhs-decay` and `--preset=old-digicam`, so you can validate the analogue-style control paths without touching the GUI.
+
 You can also invoke smoke mode directly from the terminal:
 
 ```sh
@@ -213,6 +215,14 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - `Up`: increase glitch intensity
 - `Down`: decrease glitch intensity
 
+## Retro Controls
+
+- The preset dropdown now includes `VHS Decay` and `Old Digicam` alongside the original digital presets.
+- The GUI includes a dedicated retro section with six toggles: `Tracking Tear`, `Head Switch`, `Chroma Drift`, `Scanline Wobble`, `Vertical Smear`, and `Column Drift`.
+- `Retro: Compact` shows the shared retro amount and jitter plus the six effect toggles.
+- `Retro: Expanded` reveals the per-effect sliders for tracking drift, head-switch height, chroma offset, smear strength, and column drift amount.
+- Full-process export snapshots the active retro settings the same way it snapshots the rest of the glitch configuration, so preview and export stay aligned.
+
 ## Interface Notes
 
 - Clicking inside the GUI does not trigger the background file picker.
@@ -220,6 +230,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - After the first successful video load, glitching turns on automatically and then follows the user's chosen on/off state.
 - `Export Start` / `Export Stop` stay in the interactive lane: you can let the preview run, change settings on the fly, and manually finish the MP4.
 - `Process Full` opens a save dialog, snapshots the current glitch settings, rewinds to frame 0, renders the entire clip once, and finishes the MP4 automatically at the playback end.
+- The retro section is layout-aware: compact mode keeps the panel shorter for quick preset-driven use, while expanded mode exposes the deeper analogue tuning controls.
 - If the fitted video does not fill the screen, black mattes are drawn around it so glitches stay confined to the visible video area.
 - The app now calls `PApplet.hideMenuBar()` before entering Processing present mode so fullscreen explicitly covers the macOS menu bar.
 
@@ -229,7 +240,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - Video playback depends on the bundled Processing video library and native GStreamer files matching your platform.
 - MP4 export depends on `ffmpeg` being installed and available on your `PATH`.
 - The macOS packaging task builds an `.app` image with the required jars and bundled Apple Silicon video natives.
-- Pushing a release tag like `v1.0.5` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
+- Pushing a release tag like `v1.1.0` triggers the GitHub Actions workflow to build and publish downloadable release bundles for macOS, Linux, and Windows.
 - The `Publish Homebrew Tap` workflow waits for the macOS Apple Silicon and Linux x86_64 release ZIPs, renders `Formula/video_glitcher.rb`, syncs it into `krahd/homebrew-tap`, and removes the previous hyphenated formula file when the `HOMEBREW_TAP_TOKEN` repository secret is configured.
 
 ## Contributing
