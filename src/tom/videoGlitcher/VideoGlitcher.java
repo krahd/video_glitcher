@@ -2,6 +2,7 @@ package tom.videoGlitcher;
 
 import processing.core.*;
 import processing.data.IntList;
+import processing.event.MouseEvent;
 import processing.video.*;
 import controlP5.*;
 
@@ -16,20 +17,58 @@ public class VideoGlitcher extends PApplet {
     private static final float PLAYBACK_END_EPSILON_SECONDS = 0.05f;
     private static final String PLAY_LABEL = "PLAY";
     private static final String PAUSE_LABEL = "PAUSE";
-    private static final String REWIND_TO_START_LABEL = "<<";
+    private static final String REWIND_TO_START_LABEL = "REWIND";
     private static final String LOOPING_LABEL = "LOOP";
     private static final String PLAY_ONCE_LABEL = "ONCE";
     private static final String PROCESS_FULL_LABEL = "Process Full";
     private static final String PROCESSING_LABEL = "Processing...";
-        private static final String[] PRESET_NAMES = {
+    private static final String RANDOM_PRESET_NAME = "Random";
+    private static final String[] PRESET_NAMES = {
             "Subtle",
             "Cinematic",
             "Corrupted File",
             "Broken Codec",
             "Extreme",
             "VHS Decay",
-            "Old Digicam"
-        };
+            "Old Digicam",
+            RANDOM_PRESET_NAME
+    };
+    private static final String[] PRESET_DISPLAY_NAMES = {
+            "Subtle",
+            "Cinematic",
+            "Corrupted",
+            "Broken Codec",
+            "Extreme",
+            "VHS Decay",
+            "Old Digicam",
+            "Random"
+    };
+    private static final int GUI_SCROLL_STEP = 34;
+    private static final int GUI_HEADER_HEIGHT = 34;
+    private static final int GUI_FOOTER_HEIGHT = 124;
+    private static final int GUI_TOGGLE_GAP = 26;
+    private static final int GUI_SECTION_GAP = 18;
+    private static final int PRESET_GRID_COLUMNS = 4;
+    private static final int PRESET_BUTTON_W = 100;
+    private static final int PRESET_BUTTON_H = 30;
+    private static final int PRESET_GRID_GAP = 8;
+    private static final int BUTTON_LABEL_SIZE = 12;
+    private static final int HUD_MARGIN = 12;
+    private static final int HUD_HEIGHT = 42;
+    private static final int FOOTER_BUTTON_H = 30;
+    private static final int FOOTER_BUTTON_GAP = 8;
+    private static final int FOOTER_ROW_STEP = 38;
+    private static final int FOOTER_LOAD_BUTTON_W = 72;
+    private static final int FOOTER_REWIND_BUTTON_W = 96;
+    private static final int FOOTER_PLAY_BUTTON_W = 72;
+    private static final int FOOTER_PLAYBACK_MODE_BUTTON_W = 56;
+    private static final int FOOTER_GLITCH_BUTTON_W = 88;
+    private static final int FOOTER_EXPORT_BUTTON_W = 96;
+    private static final int FOOTER_PROCESS_BUTTON_W = 296;
+    private static final int ADVANCED_TOGGLE_X_OFFSET = 324;
+    private static final int ADVANCED_LABEL_X_OFFSET = 350;
+    private static final int ADVANCED_TOGGLE_Y_OFFSET = 0;
+    private static final int ADVANCED_LABEL_Y_OFFSET = 1;
 
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
@@ -107,7 +146,7 @@ public class VideoGlitcher extends PApplet {
     private boolean useScanlineWobble = false;
     private boolean useVerticalSmear = false;
     private boolean useColumnDrift = false;
-    private boolean retroControlsExpanded = false;
+    private boolean compactGuiMode = true;
 
     private boolean glitchActive = false;
     private int glitchFramesLeft = 0;
@@ -130,11 +169,16 @@ public class VideoGlitcher extends PApplet {
     private Button interactiveExportButton;
     private Button stopExportButton;
     private Button processVideoButton;
-    private Button retroModeButton;
-    private DropdownList presetList;
-    private Textlabel statusLabel;
+    private Toggle advancedGuiToggle;
+    private Textlabel guiTitleLabel;
+    private Textlabel presetSectionLabel;
     private Textlabel retroSectionLabel;
     private final HashMap<String, Textlabel> guiLabels = new HashMap<>();
+    private final HashMap<String, Button> presetButtons = new HashMap<>();
+    private PFont guiFont;
+    private PFont guiTitleFont;
+    private String activePresetName = PRESET_NAMES[1];
+    private String statusMessage = "Status: no video loaded";
 
     private boolean triedVideoUriFallback = false;
     private boolean smokeExportStarted = false;
@@ -142,16 +186,19 @@ public class VideoGlitcher extends PApplet {
 
     private int panelX = 12;
     private int panelY = 12;
-    private int panelW = 420;
+    private int panelW = 458;
     private int panelH = 904;
 
     private int guiX = panelX + 14;
     private int guiY = panelY + 14;
-    private int sliderW = 180;
-    private int sliderH = 16;
-    private int labelX = guiX + sliderW + 72;
-    private int rowGap = 24;
-    private int retroSectionY = 0;
+    private int sliderW = 220;
+    private int sliderH = 18;
+    private int labelX = guiX + sliderW + 82;
+    private int rowGap = 30;
+    private int guiScrollOffset = 0;
+    private int guiContentHeight = 0;
+    private int guiViewportTop = 0;
+    private int guiViewportBottom = 0;
 
     @Override
     public void settings() {
@@ -160,6 +207,7 @@ public class VideoGlitcher extends PApplet {
         if (launchOptions.smokeTest()) {
             size(960, 540, P2D);
         } else {
+            ensureMenuBarHidden();
             fullScreen(P2D);
         }
     }
@@ -167,6 +215,7 @@ public class VideoGlitcher extends PApplet {
     @Override
     public void setup() {
         frameRate(FPS);
+        ensureMenuBarHidden();
         surface.setTitle(launchOptions.smokeTest() ? "video_glitcher Smoke Test" : "video_glitcher");
 
         setupGui();
@@ -185,6 +234,8 @@ public class VideoGlitcher extends PApplet {
 
     @Override
     public void draw() {
+        ensureMenuBarHidden();
+
         background(0);
 
         if (video != null && !paused && video.available()) {
@@ -298,9 +349,30 @@ public class VideoGlitcher extends PApplet {
         }
     }
 
+    @Override
+    public void mouseWheel(MouseEvent event) {
+        if (!showGUI || !isPointerOverGui()) {
+            return;
+        }
+
+        if (maxGuiScroll() <= 0) {
+            return;
+        }
+
+        guiScrollOffset += Math.round(event.getCount() * GUI_SCROLL_STEP);
+        clampGuiScroll();
+        refreshGuiLayout();
+    }
+
     public void movieEvent(Movie m) {
         if (!paused) {
             updateMovieFrame(m);
+        }
+    }
+
+    private void ensureMenuBarHidden() {
+        if (!launchOptions.smokeTest()) {
+            PApplet.hideMenuBar();
         }
     }
 
@@ -310,7 +382,7 @@ public class VideoGlitcher extends PApplet {
         if (!movieReady && movie.width > 0 && movie.height > 0) {
             movieReady = true;
             computeVideoFit();
-            statusLabel.setText("Status: previewing " + currentVideoName);
+            setStatusMessage("Status: previewing " + currentVideoName);
 
             if (!hasLoadedFirstVideo) {
                 hasLoadedFirstVideo = true;
@@ -321,7 +393,7 @@ public class VideoGlitcher extends PApplet {
             if (paused) {
                 pausedFrame = movie.get();
                 movie.pause();
-                statusLabel.setText("Status: paused " + currentVideoName);
+                setStatusMessage("Status: paused " + currentVideoName);
                 updatePausePlayButton();
             }
         }
@@ -344,75 +416,56 @@ public class VideoGlitcher extends PApplet {
         cp5 = new ControlP5(this);
         cp5.setAutoDraw(false);
         guiLabels.clear();
+        presetButtons.clear();
+        guiFont = createFont("SansSerif", 14, true);
+        guiTitleFont = createFont("SansSerif", 16, true);
+        cp5.setFont(guiFont);
 
         int x = guiX;
         int y = guiY;
 
-        addGuiLabel("guiTitle", x, y, "GLITCH CONTROLS");
-        y += 24;
+        guiTitleLabel = addGuiLabel("guiTitle", x, y, "video_glitcher");
+        guiTitleLabel.setFont(guiTitleFont);
 
-        presetList = cp5.addDropdownList("preset")
-                .setPosition(x, y)
-                .setSize(240, 160)
-                .setBarHeight(24)
-                .setItemHeight(22);
+        advancedGuiToggle = cp5.addToggle("advancedGui")
+            .setPosition(x + ADVANCED_TOGGLE_X_OFFSET, y + ADVANCED_TOGGLE_Y_OFFSET)
+                .setSize(18, 18)
+                .setValue(!compactGuiMode);
+        advancedGuiToggle.getCaptionLabel().setVisible(false);
+        addGuiLabel("lbl_advancedGui", x + ADVANCED_LABEL_X_OFFSET, y + ADVANCED_LABEL_Y_OFFSET, "Advanced");
 
-        for (int i = 0; i < PRESET_NAMES.length; i++) {
-            presetList.addItem(PRESET_NAMES[i], i);
-        }
+        y += GUI_HEADER_HEIGHT;
 
-        y += 196;
+        presetSectionLabel = addGuiLabel("presetSection", x, y, "PRESETS");
+        presetSectionLabel.setFont(guiTitleFont);
+        addPresetButtons(x, y + 24);
 
-        addSliderRow("glitchIntensity", x, y, sliderW, sliderH, 0.1f, 2.0f, glitchIntensity, "Intensity");
-        y += rowGap;
-        addSliderRow("glitchFrequency", x, y, sliderW, sliderH, 0.0f, 1.0f, glitchFrequency, "Frequency");
-        y += rowGap;
+        addSliderRow("glitchIntensity", x, y, sliderW, sliderH, 0.1f, 2.0f, glitchIntensity, "Digital Intensity");
+        addSliderRow("glitchFrequency", x, y, sliderW, sliderH, 0.0f, 1.0f, glitchFrequency, "Glitch Activity");
         addSliderRow("episodeMinFrames", x, y, sliderW, sliderH, 1, 30, episodeMinFrames, "Episode Min");
-        y += rowGap;
         addSliderRow("episodeMaxFrames", x, y, sliderW, sliderH, 1, 40, episodeMaxFrames, "Episode Max");
-        y += rowGap;
         addSliderRow("calmMinFrames", x, y, sliderW, sliderH, 1, 80, calmMinFrames, "Calm Min");
-        y += rowGap;
         addSliderRow("calmMaxFrames", x, y, sliderW, sliderH, 1, 120, calmMaxFrames, "Calm Max");
-        y += rowGap;
-        addSliderRow("subtleDamageChance", x, y, sliderW, sliderH, 0.0f, 1.0f, subtleDamageChance, "Subtle Damage");
-        y += rowGap;
+        addSliderRow("subtleDamageChance", x, y, sliderW, sliderH, 0.0f, 1.0f, subtleDamageChance, "Damage Texture");
         addSliderRow("burstChance", x, y, sliderW, sliderH, 0.0f, 1.0f, burstChance, "Burst Chance");
-        y += 30;
 
         addToggleRow("useRGBSplit", "RGB Split", x, y);
-        y += 22;
         addToggleRow("useSlices", "Slices", x, y);
-        y += 22;
         addToggleRow("useBlocks", "Blocks", x, y);
-        y += 22;
         addToggleRow("useBars", "Bars", x, y);
-        y += 22;
         addToggleRow("useDropouts", "Dropouts", x, y);
-        y += 22;
         addToggleRow("useGhosts", "Ghosts", x, y);
-        y += 22;
         addToggleRow("useFreeze", "Freeze", x, y);
-        y += 22;
         addToggleRow("useScanBursts", "Scan Bursts", x, y);
-        y += 22;
         addToggleRow("useFlash", "Flash", x, y);
-        y += 22;
         addToggleRow("useMicroJitter", "Micro Jitter", x, y);
-        y += 22;
         addToggleRow("useZoomWobble", "Zoom Wobble", x, y);
-        y += 30;
 
-        retroSectionY = y;
         retroSectionLabel = addGuiLabel("retroSection", x, y, "RETRO DISTORTIONS");
-        retroModeButton = cp5.addButton("toggleRetroControlsMode")
-            .setPosition(x, y)
-            .setSize(126, 24)
-            .setLabel("Retro: Compact");
-        retroModeButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        retroSectionLabel.setFont(guiTitleFont);
 
-        addSliderRow("retroAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, retroAmount, "Retro Amount");
-        addSliderRow("retroJitter", x, y, sliderW, sliderH, 0.0f, 1.0f, retroJitter, "Retro Jitter");
+        addSliderRow("retroAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, retroAmount, "Analogue Intensity");
+        addSliderRow("retroJitter", x, y, sliderW, sliderH, 0.0f, 1.0f, retroJitter, "Analogue Jitter");
         addToggleRow("useTrackingTear", "Tracking Tear", x, y);
         addToggleRow("useHeadSwitchBand", "Head Switch", x, y);
         addToggleRow("useChromaDrift", "Chroma Drift", x, y);
@@ -425,77 +478,132 @@ public class VideoGlitcher extends PApplet {
         addSliderRow("smearStrength", x, y, sliderW, sliderH, 0.0f, 1.0f, smearStrength, "Smear Strength");
         addSliderRow("columnDriftAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, columnDriftAmount, "Column Drift");
 
+        int firstRowY = y;
+        int loadButtonX = x;
+        int rewindButtonX = loadButtonX + FOOTER_LOAD_BUTTON_W + FOOTER_BUTTON_GAP;
+        int pausePlayButtonX = rewindButtonX + FOOTER_REWIND_BUTTON_W + FOOTER_BUTTON_GAP;
+        int playbackModeButtonX = pausePlayButtonX + FOOTER_PLAY_BUTTON_W + FOOTER_BUTTON_GAP;
+
         Button bLoad = cp5.addButton("loadVideo")
-                .setPosition(x, y)
-                .setSize(72, 30)
-                .setLabel("Load Video");
-        bLoad.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+            .setPosition(loadButtonX, firstRowY)
+            .setSize(FOOTER_LOAD_BUTTON_W, FOOTER_BUTTON_H)
+                .setLabel("Load");
+        styleFooterButton(bLoad);
 
         Button rewindButton = cp5.addButton("rewindToStart")
-                .setPosition(x + 80, y)
-                .setSize(44, 30)
+            .setPosition(rewindButtonX, firstRowY)
+            .setSize(FOOTER_REWIND_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel(REWIND_TO_START_LABEL);
-        rewindButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(rewindButton);
 
         pausePlayButton = cp5.addButton("pausePlay")
-                .setPosition(x + 132, y)
-                .setSize(72, 30)
+            .setPosition(pausePlayButtonX, firstRowY)
+            .setSize(FOOTER_PLAY_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel(PLAY_LABEL);
-        pausePlayButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(pausePlayButton);
 
         playbackModeButton = cp5.addButton("togglePlaybackMode")
-                .setPosition(x + 212, y)
-                .setSize(56, 30)
+            .setPosition(playbackModeButtonX, firstRowY)
+            .setSize(FOOTER_PLAYBACK_MODE_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel(LOOPING_LABEL);
-        playbackModeButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(playbackModeButton);
 
-        y += 38;
+        y += FOOTER_ROW_STEP;
+
+        int secondRowY = y;
+        int exportButtonX = x + FOOTER_GLITCH_BUTTON_W + FOOTER_BUTTON_GAP;
+        int stopExportButtonX = exportButtonX + FOOTER_EXPORT_BUTTON_W + FOOTER_BUTTON_GAP;
 
         glitchToggleButton = cp5.addButton("toggleGlitching")
-                .setPosition(x, y)
-                .setSize(88, 30)
+            .setPosition(x, secondRowY)
+            .setSize(FOOTER_GLITCH_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel("Glitch");
-        glitchToggleButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(glitchToggleButton);
 
         interactiveExportButton = cp5.addButton("startExport")
-                .setPosition(x + 96, y)
-                .setSize(96, 30)
+            .setPosition(exportButtonX, secondRowY)
+            .setSize(FOOTER_EXPORT_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel("Export Start");
-        interactiveExportButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(interactiveExportButton);
 
         stopExportButton = cp5.addButton("stopExport")
-                .setPosition(x + 200, y)
-                .setSize(96, 30)
+            .setPosition(stopExportButtonX, secondRowY)
+            .setSize(FOOTER_EXPORT_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel("Export Stop");
-        stopExportButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(stopExportButton);
 
-        y += 38;
+        y += FOOTER_ROW_STEP;
 
         processVideoButton = cp5.addButton("processVideo")
                 .setPosition(x, y)
-                .setSize(296, 30)
+            .setSize(FOOTER_PROCESS_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel(PROCESS_FULL_LABEL);
-        processVideoButton.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        styleFooterButton(processVideoButton);
 
-        y += 42;
-
-        statusLabel = cp5.addTextlabel("status")
-                .setPosition(x, y)
-                .setText("Status: no video loaded");
-
-    refreshRetroLayout();
+        refreshGuiLayout();
         updatePausePlayButton();
         updatePlaybackModeButton();
         updateGlitchButton();
         updateExportButtons();
+        updatePresetButtons();
+    }
+
+    private void addPresetButtons(int x, int y) {
+        for (int i = 0; i < PRESET_NAMES.length; i++) {
+            int column = i % PRESET_GRID_COLUMNS;
+            int row = i / PRESET_GRID_COLUMNS;
+            int buttonX = x + column * (PRESET_BUTTON_W + PRESET_GRID_GAP);
+            int buttonY = y + row * (PRESET_BUTTON_H + PRESET_GRID_GAP);
+
+            Button button = cp5.addButton("preset_" + i)
+                    .setPosition(buttonX, buttonY)
+                    .setSize(PRESET_BUTTON_W, PRESET_BUTTON_H)
+                    .setLabel(PRESET_DISPLAY_NAMES[i]);
+            styleButton(button);
+            presetButtons.put(PRESET_NAMES[i], button);
+        }
+    }
+
+    private void updatePresetButtons() {
+        for (int i = 0; i < PRESET_NAMES.length; i++) {
+            Button button = presetButtons.get(PRESET_NAMES[i]);
+            if (button != null) {
+                stylePresetButton(button, PRESET_NAMES[i].equals(activePresetName));
+            }
+        }
+    }
+
+    private void stylePresetButton(Button button, boolean active) {
+        if (active) {
+            button.setColorBackground(color(208, 102, 71));
+            button.setColorForeground(color(230, 120, 86));
+            button.setColorActive(color(247, 141, 101));
+        } else {
+            button.setColorBackground(color(40, 40, 40));
+            button.setColorForeground(color(66, 66, 66));
+            button.setColorActive(color(92, 92, 92));
+        }
+    }
+
+    private void styleButton(Button button) {
+        button.getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER);
+        button.getCaptionLabel().setFont(guiFont).setSize(BUTTON_LABEL_SIZE);
+    }
+
+    private void styleFooterButton(Button button) {
+        styleButton(button);
+        button.setColorBackground(color(26, 67, 51));
+        button.setColorForeground(color(38, 96, 72));
+        button.setColorActive(color(55, 128, 95));
     }
 
     private Textlabel addGuiLabel(String name, int x, int y, String text) {
-    Textlabel label = cp5.addTextlabel(name)
-        .setPosition(x, y)
-        .setText(text);
-    guiLabels.put(name, label);
-    return label;
+        Textlabel label = cp5.addTextlabel(name)
+                .setPosition(x, y)
+                .setText(text);
+        label.setFont(guiFont);
+        guiLabels.put(name, label);
+        return label;
     }
 
     private void addSliderRow(String name, int x, int y, int w, int h, float minV, float maxV, float value,
@@ -507,20 +615,26 @@ public class VideoGlitcher extends PApplet {
                 .setValue(value);
 
         s.getCaptionLabel().setVisible(false);
-        s.getValueLabel().align(ControlP5.RIGHT_OUTSIDE, ControlP5.CENTER).setPaddingX(6);
+        s.getValueLabel().align(ControlP5.RIGHT_OUTSIDE, ControlP5.CENTER).setPaddingX(8).setFont(guiFont).setSize(12);
 
-    addGuiLabel("lbl_" + name, labelX, y + 1, label);
+        addGuiLabel("lbl_" + name, labelX, y + 1, label);
     }
 
     private void addToggleRow(String name, String label, int x, int y) {
         Toggle t = cp5.addToggle(name)
                 .setPosition(x, y)
-                .setSize(18, 18)
+            .setSize(20, 20)
                 .setValue(getToggleValue(name));
 
         t.getCaptionLabel().setVisible(false);
 
         addGuiLabel("lbl_" + name, x + 28, y + 1, label);
+    }
+
+    private void setStandaloneControllerVisible(Controller<?> controller, boolean visible) {
+        if (controller != null) {
+            controller.setVisible(visible);
+        }
     }
 
     private void setControlVisible(String name, boolean visible) {
@@ -547,107 +661,319 @@ public class VideoGlitcher extends PApplet {
         }
     }
 
-    private int layoutSliderRow(String name, int x, int y, boolean visible) {
-        setControlVisible(name, visible);
-        if (visible) {
-            setRowPosition(name, x, y, false);
-            return y + rowGap;
-        }
-        return y;
+    private boolean isScrollableRowVisible(int screenY, int rowHeight) {
+        return screenY + rowHeight >= guiViewportTop && screenY <= guiViewportBottom;
     }
 
-    private int layoutToggleRow(String name, int x, int y, boolean visible) {
-        setControlVisible(name, visible);
-        if (visible) {
-            setRowPosition(name, x, y, true);
-            return y + 22;
+    private int layoutScrollableSliderRow(String name, int x, int logicalY, boolean visible) {
+        if (!visible) {
+            setControlVisible(name, false);
+            return logicalY;
         }
-        return y;
+
+        int screenY = guiViewportTop + logicalY - guiScrollOffset;
+        boolean rowVisible = isScrollableRowVisible(screenY, sliderH);
+        setControlVisible(name, rowVisible);
+        if (rowVisible) {
+            setRowPosition(name, x, screenY, false);
+        }
+        return logicalY + rowGap;
     }
 
-    private void refreshRetroLayout() {
+    private int layoutScrollableToggleRow(String name, int x, int logicalY, boolean visible) {
+        if (!visible) {
+            setControlVisible(name, false);
+            return logicalY;
+        }
+
+        int screenY = guiViewportTop + logicalY - guiScrollOffset;
+        boolean rowVisible = isScrollableRowVisible(screenY, 20);
+        setControlVisible(name, rowVisible);
+        if (rowVisible) {
+            setRowPosition(name, x, screenY, true);
+        }
+        return logicalY + GUI_TOGGLE_GAP;
+    }
+
+    private int layoutScrollableLabel(Textlabel label, int x, int logicalY, int rowHeight, boolean visible) {
+        if (label == null) {
+            return logicalY;
+        }
+
+        if (!visible) {
+            label.setVisible(false);
+            return logicalY;
+        }
+
+        int screenY = guiViewportTop + logicalY - guiScrollOffset;
+        boolean rowVisible = isScrollableRowVisible(screenY, rowHeight);
+        label.setVisible(rowVisible);
+        if (rowVisible) {
+            label.setPosition(x, screenY);
+        }
+        return logicalY + rowHeight;
+    }
+
+    private int measureGuiContentHeight() {
+        int logicalY = 0;
+
+        if (compactGuiMode) {
+            logicalY += rowGap;
+            logicalY += rowGap;
+            logicalY += rowGap;
+            logicalY += rowGap;
+            return logicalY + 8;
+        }
+
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += GUI_SECTION_GAP;
+
+        logicalY += GUI_TOGGLE_GAP * 11;
+        logicalY += GUI_SECTION_GAP;
+
+        logicalY += 24;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += GUI_TOGGLE_GAP * 6;
+        logicalY += GUI_SECTION_GAP;
+
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+        logicalY += rowGap;
+
+        return logicalY + 8;
+    }
+
+    private int maxGuiScroll() {
+        return max(0, guiContentHeight - max(0, guiViewportBottom - guiViewportTop));
+    }
+
+    private void clampGuiScroll() {
+        guiScrollOffset = constrain(guiScrollOffset, 0, maxGuiScroll());
+    }
+
+    private float hudTopY() {
+        return height - HUD_HEIGHT - HUD_MARGIN;
+    }
+
+    private void refreshGuiLayout() {
         if (cp5 == null) {
             return;
         }
 
         int x = guiX;
-        int y = retroSectionY;
+        int headerY = guiY;
+        int presetY = headerY + GUI_HEADER_HEIGHT;
+        int presetButtonsY = presetY + 24;
+        int presetGridBottom = presetButtonsY + PRESET_BUTTON_H * 2 + PRESET_GRID_GAP;
 
-        if (retroSectionLabel != null) {
-            retroSectionLabel.setPosition(x, y).setVisible(true);
+        if (guiTitleLabel != null) {
+            guiTitleLabel.setPosition(x, headerY).setVisible(true);
         }
-        if (retroModeButton != null) {
-            retroModeButton.setPosition(x + 156, y - 4);
+
+        if (advancedGuiToggle != null) {
+            advancedGuiToggle.setVisible(true);
+            advancedGuiToggle.setPosition(x + ADVANCED_TOGGLE_X_OFFSET, headerY + ADVANCED_TOGGLE_Y_OFFSET);
         }
-        updateRetroModeButton();
+        Textlabel advancedLabel = guiLabels.get("lbl_advancedGui");
+        if (advancedLabel != null) {
+            advancedLabel.setVisible(true);
+            advancedLabel.setPosition(x + ADVANCED_LABEL_X_OFFSET, headerY + ADVANCED_LABEL_Y_OFFSET);
+        }
 
-        y += 28;
-        y = layoutSliderRow("retroAmount", x, y, true);
-        y = layoutSliderRow("retroJitter", x, y, true);
-        y = layoutToggleRow("useTrackingTear", x, y, true);
-        y = layoutToggleRow("useHeadSwitchBand", x, y, true);
-        y = layoutToggleRow("useChromaDrift", x, y, true);
-        y = layoutToggleRow("useScanlineWobble", x, y, true);
-        y = layoutToggleRow("useVerticalSmear", x, y, true);
-        y = layoutToggleRow("useColumnDrift", x, y, true);
-        y += 8;
+        if (presetSectionLabel != null) {
+            presetSectionLabel.setVisible(true);
+            presetSectionLabel.setPosition(x, presetY);
+        }
 
-        y = layoutSliderRow("trackingDrift", x, y, retroControlsExpanded);
-        y = layoutSliderRow("headSwitchHeight", x, y, retroControlsExpanded);
-        y = layoutSliderRow("chromaOffset", x, y, retroControlsExpanded);
-        y = layoutSliderRow("smearStrength", x, y, retroControlsExpanded);
-        y = layoutSliderRow("columnDriftAmount", x, y, retroControlsExpanded);
-        y += 22;
+        for (int i = 0; i < PRESET_NAMES.length; i++) {
+            Button button = presetButtons.get(PRESET_NAMES[i]);
+            if (button != null) {
+                int column = i % PRESET_GRID_COLUMNS;
+                int row = i / PRESET_GRID_COLUMNS;
+                button.setVisible(true);
+                button.setPosition(x + column * (PRESET_BUTTON_W + PRESET_GRID_GAP),
+                        presetButtonsY + row * (PRESET_BUTTON_H + PRESET_GRID_GAP));
+            }
+        }
+
+        updateAdvancedToggle();
+        updatePresetButtons();
+
+        guiContentHeight = measureGuiContentHeight();
+
+        int maxVisiblePanelHeight = max(420, round(hudTopY() - panelY));
+        int basePanelHeight = (presetGridBottom - panelY) + GUI_FOOTER_HEIGHT + 34;
+        int desiredPanelHeight = basePanelHeight + guiContentHeight;
+        if (compactGuiMode) {
+            panelH = min(maxVisiblePanelHeight, desiredPanelHeight);
+            panelH = max(panelH, 428);
+            guiScrollOffset = 0;
+        } else {
+            panelH = maxVisiblePanelHeight;
+        }
+
+        int footerY = panelY + panelH - GUI_FOOTER_HEIGHT + 8;
+        guiViewportTop = presetGridBottom + 24;
+        guiViewportBottom = footerY - 18;
+        clampGuiScroll();
+
+        int logicalY = 0;
+
+        logicalY = layoutScrollableSliderRow("glitchIntensity", x, logicalY, true);
+        logicalY = layoutScrollableSliderRow("glitchFrequency", x, logicalY, true);
+        logicalY = layoutScrollableSliderRow("retroAmount", x, logicalY, true);
+        logicalY = layoutScrollableSliderRow("subtleDamageChance", x, logicalY, true);
+
+        if (!compactGuiMode) {
+            logicalY = layoutScrollableSliderRow("episodeMinFrames", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("episodeMaxFrames", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("calmMinFrames", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("calmMaxFrames", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("burstChance", x, logicalY, true);
+            logicalY += GUI_SECTION_GAP;
+
+            logicalY = layoutScrollableToggleRow("useRGBSplit", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useSlices", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useBlocks", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useBars", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useDropouts", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useGhosts", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useFreeze", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useScanBursts", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useFlash", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useMicroJitter", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useZoomWobble", x, logicalY, true);
+            logicalY += GUI_SECTION_GAP;
+        } else {
+            setControlVisible("episodeMinFrames", false);
+            setControlVisible("episodeMaxFrames", false);
+            setControlVisible("calmMinFrames", false);
+            setControlVisible("calmMaxFrames", false);
+            setControlVisible("burstChance", false);
+            setControlVisible("useRGBSplit", false);
+            setControlVisible("useSlices", false);
+            setControlVisible("useBlocks", false);
+            setControlVisible("useBars", false);
+            setControlVisible("useDropouts", false);
+            setControlVisible("useGhosts", false);
+            setControlVisible("useFreeze", false);
+            setControlVisible("useScanBursts", false);
+            setControlVisible("useFlash", false);
+            setControlVisible("useMicroJitter", false);
+            setControlVisible("useZoomWobble", false);
+        }
+
+        if (!compactGuiMode) {
+            logicalY = layoutScrollableLabel(retroSectionLabel, x, logicalY, 24, true);
+            logicalY = layoutScrollableSliderRow("retroJitter", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useTrackingTear", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useHeadSwitchBand", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useChromaDrift", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useScanlineWobble", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useVerticalSmear", x, logicalY, true);
+            logicalY = layoutScrollableToggleRow("useColumnDrift", x, logicalY, true);
+            logicalY += GUI_SECTION_GAP;
+
+            logicalY = layoutScrollableSliderRow("trackingDrift", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("headSwitchHeight", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("chromaOffset", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("smearStrength", x, logicalY, true);
+            logicalY = layoutScrollableSliderRow("columnDriftAmount", x, logicalY, true);
+        } else {
+            if (retroSectionLabel != null) {
+                retroSectionLabel.setVisible(false);
+            }
+            setControlVisible("retroJitter", false);
+            setControlVisible("useTrackingTear", false);
+            setControlVisible("useHeadSwitchBand", false);
+            setControlVisible("useChromaDrift", false);
+            setControlVisible("useScanlineWobble", false);
+            setControlVisible("useVerticalSmear", false);
+            setControlVisible("useColumnDrift", false);
+            setControlVisible("trackingDrift", false);
+            setControlVisible("headSwitchHeight", false);
+            setControlVisible("chromaOffset", false);
+            setControlVisible("smearStrength", false);
+            setControlVisible("columnDriftAmount", false);
+        }
 
         Controller<?> loadVideoButton = cp5.getController("loadVideo");
+        setStandaloneControllerVisible(loadVideoButton, true);
+        int loadButtonX = x;
+        int rewindButtonX = loadButtonX + FOOTER_LOAD_BUTTON_W + FOOTER_BUTTON_GAP;
+        int pausePlayButtonX = rewindButtonX + FOOTER_REWIND_BUTTON_W + FOOTER_BUTTON_GAP;
+        int playbackModeButtonX = pausePlayButtonX + FOOTER_PLAY_BUTTON_W + FOOTER_BUTTON_GAP;
         if (loadVideoButton != null) {
-            loadVideoButton.setPosition(x, y);
+            loadVideoButton.setPosition(loadButtonX, footerY);
         }
 
         Controller<?> rewindButton = cp5.getController("rewindToStart");
+        setStandaloneControllerVisible(rewindButton, true);
         if (rewindButton != null) {
-            rewindButton.setPosition(x + 80, y);
+            rewindButton.setPosition(rewindButtonX, footerY);
         }
 
         if (pausePlayButton != null) {
-            pausePlayButton.setPosition(x + 132, y);
+            pausePlayButton.setVisible(true);
+            pausePlayButton.setPosition(pausePlayButtonX, footerY);
         }
 
         if (playbackModeButton != null) {
-            playbackModeButton.setPosition(x + 212, y);
+            playbackModeButton.setVisible(true);
+            playbackModeButton.setPosition(playbackModeButtonX, footerY);
         }
 
-        y += 38;
+        footerY += FOOTER_ROW_STEP;
+
+        int exportButtonX = x + FOOTER_GLITCH_BUTTON_W + FOOTER_BUTTON_GAP;
+        int stopExportButtonX = exportButtonX + FOOTER_EXPORT_BUTTON_W + FOOTER_BUTTON_GAP;
 
         if (glitchToggleButton != null) {
-            glitchToggleButton.setPosition(x, y);
+            glitchToggleButton.setVisible(true);
+            glitchToggleButton.setPosition(x, footerY);
         }
         if (interactiveExportButton != null) {
-            interactiveExportButton.setPosition(x + 96, y);
+            interactiveExportButton.setVisible(true);
+            interactiveExportButton.setPosition(exportButtonX, footerY);
         }
         if (stopExportButton != null) {
-            stopExportButton.setPosition(x + 200, y);
+            stopExportButton.setVisible(true);
+            stopExportButton.setPosition(stopExportButtonX, footerY);
         }
 
-        y += 38;
+        footerY += FOOTER_ROW_STEP;
 
         if (processVideoButton != null) {
-            processVideoButton.setPosition(x, y);
+            processVideoButton.setVisible(true);
+            processVideoButton.setPosition(x, footerY);
         }
-
-        y += 42;
-
-        if (statusLabel != null) {
-            statusLabel.setPosition(x, y);
-        }
-
-        panelH = y - panelY + 44;
     }
 
-    private void updateRetroModeButton() {
-        if (retroModeButton != null) {
-            retroModeButton.setLabel(retroControlsExpanded ? "Retro: Expanded" : "Retro: Compact");
+    private void updateAdvancedToggle() {
+        if (advancedGuiToggle != null) {
+            advancedGuiToggle.setBroadcast(false);
+            advancedGuiToggle.setValue(!compactGuiMode);
+            advancedGuiToggle.setBroadcast(true);
         }
+    }
+
+    private void setStatusMessage(String message) {
+        if (message == null || message.isBlank()) {
+            statusMessage = "Status: ready";
+            return;
+        }
+
+        statusMessage = message;
     }
 
     private boolean getToggleValue(String name) {
@@ -693,23 +1019,22 @@ public class VideoGlitcher extends PApplet {
             return;
         }
 
-        if (e.isFrom(presetList)) {
-            int v = (int) e.getValue();
-            if (v >= 0 && v < PRESET_NAMES.length) {
-                applyPreset(PRESET_NAMES[v]);
+        String controllerName = e.getController().getName();
+        if (controllerName.startsWith("preset_")) {
+            int index = Integer.parseInt(controllerName.substring("preset_".length()));
+            if (index >= 0 && index < PRESET_NAMES.length) {
+                applyPreset(PRESET_NAMES[index]);
             }
-        }
-    }
-
-    public void toggleRetroControlsMode() {
-        if (isFullProcessExportActive()) {
             return;
         }
 
-        retroControlsExpanded = !retroControlsExpanded;
-        refreshRetroLayout();
-        if (statusLabel != null) {
-            statusLabel.setText("Status: retro controls " + (retroControlsExpanded ? "expanded" : "compact"));
+        if ("advancedGui".equals(controllerName)) {
+            boolean nextAdvanced = e.getController().getValue() > 0.5f;
+            if (compactGuiMode == nextAdvanced) {
+                compactGuiMode = !nextAdvanced;
+                guiScrollOffset = 0;
+                refreshGuiLayout();
+            }
         }
     }
 
@@ -740,10 +1065,10 @@ public class VideoGlitcher extends PApplet {
         if (paused) {
             pausedFrame = video.get();
             video.pause();
-            statusLabel.setText("Status: rewound " + currentVideoName);
+            setStatusMessage("Status: rewound " + currentVideoName);
         } else {
             startPlayback();
-            statusLabel.setText("Status: previewing " + currentVideoName);
+            setStatusMessage("Status: previewing " + currentVideoName);
         }
 
         updatePausePlayButton();
@@ -764,7 +1089,7 @@ public class VideoGlitcher extends PApplet {
             }
         }
 
-        statusLabel.setText("Status: playback mode " + (loopPlayback ? "looping" : "play once"));
+        setStatusMessage("Status: playback mode " + (loopPlayback ? "looping" : "play once"));
         updatePlaybackModeButton();
     }
 
@@ -774,7 +1099,7 @@ public class VideoGlitcher extends PApplet {
         }
 
         glitchEnabled = !glitchEnabled;
-        statusLabel.setText("Status: glitching " + (glitchEnabled ? "enabled" : "disabled"));
+        setStatusMessage("Status: glitching " + (glitchEnabled ? "enabled" : "disabled"));
         updateGlitchButton();
     }
 
@@ -800,7 +1125,7 @@ public class VideoGlitcher extends PApplet {
         }
 
         selectingProcessOutput = true;
-        statusLabel.setText("Status: choose where to save the processed video");
+        setStatusMessage("Status: choose where to save the processed video");
         selectOutput("Save processed video as:", "processOutputSelected", new File(exportFilename));
     }
 
@@ -808,7 +1133,7 @@ public class VideoGlitcher extends PApplet {
         selectingProcessOutput = false;
 
         if (selection == null) {
-            statusLabel.setText("Status: full-process export cancelled");
+            setStatusMessage("Status: full-process export cancelled");
             return;
         }
 
@@ -820,7 +1145,7 @@ public class VideoGlitcher extends PApplet {
         selectingVideo = false;
 
         if (selection == null) {
-            statusLabel.setText("Status: no video selected");
+            setStatusMessage("Status: no video selected");
             return;
         }
 
@@ -866,7 +1191,7 @@ public class VideoGlitcher extends PApplet {
         try {
             video = new Movie(this, source);
             startPlayback();
-            statusLabel.setText("Status: loading " + currentVideoName + " via " + sourceLabel);
+            setStatusMessage("Status: loading " + currentVideoName + " via " + sourceLabel);
         } catch (RuntimeException exception) {
             video = null;
             println("Failed to load video via " + sourceLabel + ": " + exception.getMessage());
@@ -874,7 +1199,7 @@ public class VideoGlitcher extends PApplet {
                 triedVideoUriFallback = true;
                 startMovie(currentVideoFile.toURI().toString(), "file URI");
             } else {
-                statusLabel.setText("Status: failed to load " + currentVideoName);
+                setStatusMessage("Status: failed to load " + currentVideoName);
             }
         }
     }
@@ -938,6 +1263,22 @@ public class VideoGlitcher extends PApplet {
         stroke(255, 35);
         noFill();
         rect(panelX, panelY, panelW, panelH, 14);
+
+        int maxScroll = maxGuiScroll();
+        if (maxScroll > 0) {
+            float trackX = panelX + panelW - 10;
+            float trackY = guiViewportTop;
+            float trackH = max(0, guiViewportBottom - guiViewportTop);
+            float thumbH = max(32, trackH * trackH / max(1, guiContentHeight));
+            float thumbY = trackY + map(guiScrollOffset, 0, maxScroll, 0, max(0, trackH - thumbH));
+
+            noStroke();
+            fill(255, 20);
+            rect(trackX, trackY, 4, trackH, 2);
+
+            fill(255, 90);
+            rect(trackX, thumbY, 4, thumbH, 2);
+        }
     }
 
     private void drawGui() {
@@ -956,14 +1297,36 @@ public class VideoGlitcher extends PApplet {
                 && mouseY >= panelY && mouseY <= panelY + panelH;
     }
 
+    private String fitTextToWidth(String text, float maxWidth) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        if (textWidth(text) <= maxWidth) {
+            return text;
+        }
+
+        String ellipsis = "...";
+        int end = text.length();
+        while (end > 0 && textWidth(text.substring(0, end) + ellipsis) > maxWidth) {
+            end--;
+        }
+
+        return end <= 0 ? ellipsis : text.substring(0, end) + ellipsis;
+    }
+
     private void drawHUD() {
+        float hudX = HUD_MARGIN;
+        float hudY = hudTopY();
+        float hudW = width - HUD_MARGIN * 2.0f;
+
         fill(255, 220);
         noStroke();
-        rect(12, height - 36, width - 24, 24, 8);
+        rect(hudX, hudY, hudW, HUD_HEIGHT, 8);
 
         fill(0);
-        textSize(14);
-        textAlign(LEFT, BASELINE);
+        textSize(13);
+        textAlign(LEFT, TOP);
 
         String mode = glitchActive ? "GLITCH" : "CALM";
         String exp = exportMode == ExportMode.INTERACTIVE ? "INTERACTIVE EXPORT"
@@ -972,16 +1335,16 @@ public class VideoGlitcher extends PApplet {
         String gui = showGUI ? "GUI ON" : "GUI OFF";
         String playback = paused ? "PAUSED" : "PLAYING";
         String playbackMode = loopPlayback ? "LOOP" : "ONCE";
+        String summary = "Video: " + currentVideoName
+                + " | Mode: " + mode
+                + " | Playback: " + playback
+                + " | Repeat: " + playbackMode
+                + " | Output: " + exp
+                + " | " + gui
+                + " | SPACE play/pause | G glitch | L load | F freeze | H hud | U gui | E export | P process";
 
-        text(
-                "Video: " + currentVideoName +
-                        "   Mode: " + mode +
-                        "   Playback: " + playback +
-                        "   Repeat: " + playbackMode +
-                        "   Output: " + exp +
-                        "   " + gui +
-                        "   SPACE play/pause   G glitch   L load   F freeze   H hud   U gui   E export   P process",
-                20, height - 18);
+        text(fitTextToWidth(statusMessage, hudW - 16), hudX + 8, hudY + 6);
+        text(fitTextToWidth(summary, hudW - 16), hudX + 8, hudY + 23);
     }
 
     private void normalizeRanges() {
@@ -1515,10 +1878,17 @@ public class VideoGlitcher extends PApplet {
     }
 
     private void applyPreset(String name) {
+        if (RANDOM_PRESET_NAME.equals(name)) {
+            applyRandomPreset();
+            return;
+        }
+
         VideoGlitcherLogic.PresetValues preset = VideoGlitcherLogic.presetForName(name);
         if (preset == null) {
             return;
         }
+
+        activePresetName = name;
 
         glitchIntensity = preset.glitchIntensity();
         glitchFrequency = preset.glitchFrequency();
@@ -1546,6 +1916,133 @@ public class VideoGlitcher extends PApplet {
         applyPresetEffectDefaults(name);
 
         syncGuiValues();
+    }
+
+    private void applyRandomPreset() {
+        activePresetName = RANDOM_PRESET_NAME;
+
+        glitchIntensity = random(0.1f, 2.0f);
+        glitchFrequency = random(0.0f, 1.0f);
+        episodeMinFrames = floor(random(1, 31));
+        episodeMaxFrames = floor(random(episodeMinFrames, 41));
+        calmMinFrames = floor(random(1, 81));
+        calmMaxFrames = floor(random(calmMinFrames, 121));
+        subtleDamageChance = random(0.0f, 1.0f);
+        burstChance = random(0.0f, 1.0f);
+        retroAmount = random(0.0f, 1.0f);
+        retroJitter = random(0.0f, 1.0f);
+        trackingDrift = random(0.0f, 1.0f);
+        headSwitchHeight = random(0.0f, 1.0f);
+        chromaOffset = random(0.0f, 1.0f);
+        smearStrength = random(0.0f, 1.0f);
+        columnDriftAmount = random(0.0f, 1.0f);
+
+        useRGBSplit = randomToggle();
+        useSlices = randomToggle();
+        useBlocks = randomToggle();
+        useBars = randomToggle();
+        useDropouts = randomToggle();
+        useGhosts = randomToggle();
+        useFreeze = randomToggle();
+        useScanBursts = randomToggle();
+        useFlash = randomToggle();
+        useMicroJitter = randomToggle();
+        useZoomWobble = randomToggle();
+        useTrackingTear = randomToggle();
+        useHeadSwitchBand = randomToggle();
+        useChromaDrift = randomToggle();
+        useScanlineWobble = randomToggle();
+        useVerticalSmear = randomToggle();
+        useColumnDrift = randomToggle();
+
+        if (!hasAnyEffectEnabled()) {
+            enableRandomEffect();
+        }
+
+        syncGuiValues();
+        setStatusMessage("Status: random preset generated");
+    }
+
+    private boolean randomToggle() {
+        return random(1) < 0.5f;
+    }
+
+    private boolean hasAnyEffectEnabled() {
+        return useRGBSplit
+                || useSlices
+                || useBlocks
+                || useBars
+                || useDropouts
+                || useGhosts
+                || useFreeze
+                || useScanBursts
+                || useFlash
+                || useMicroJitter
+                || useZoomWobble
+                || useTrackingTear
+                || useHeadSwitchBand
+                || useChromaDrift
+                || useScanlineWobble
+                || useVerticalSmear
+                || useColumnDrift;
+    }
+
+    private void enableRandomEffect() {
+        int effectIndex = (int) random(17);
+
+        switch (effectIndex) {
+            case 0:
+                useRGBSplit = true;
+                break;
+            case 1:
+                useSlices = true;
+                break;
+            case 2:
+                useBlocks = true;
+                break;
+            case 3:
+                useBars = true;
+                break;
+            case 4:
+                useDropouts = true;
+                break;
+            case 5:
+                useGhosts = true;
+                break;
+            case 6:
+                useFreeze = true;
+                break;
+            case 7:
+                useScanBursts = true;
+                break;
+            case 8:
+                useFlash = true;
+                break;
+            case 9:
+                useMicroJitter = true;
+                break;
+            case 10:
+                useZoomWobble = true;
+                break;
+            case 11:
+                useTrackingTear = true;
+                break;
+            case 12:
+                useHeadSwitchBand = true;
+                break;
+            case 13:
+                useChromaDrift = true;
+                break;
+            case 14:
+                useScanlineWobble = true;
+                break;
+            case 15:
+                useVerticalSmear = true;
+                break;
+            default:
+                useColumnDrift = true;
+                break;
+        }
     }
 
     private void applyPresetEffectDefaults(String name) {
@@ -1616,7 +2113,8 @@ public class VideoGlitcher extends PApplet {
         cp5.getController("useScanlineWobble").setValue(useScanlineWobble ? 1 : 0);
         cp5.getController("useVerticalSmear").setValue(useVerticalSmear ? 1 : 0);
         cp5.getController("useColumnDrift").setValue(useColumnDrift ? 1 : 0);
-        updateRetroModeButton();
+        updateAdvancedToggle();
+        updatePresetButtons();
     }
 
     public void startExport() {
@@ -1647,7 +2145,7 @@ public class VideoGlitcher extends PApplet {
 
         exporting = true;
         updateExportButtons();
-        statusLabel.setText("Status: interactive export to " + exportFilename);
+        setStatusMessage("Status: interactive export to " + exportFilename);
         println("Interactive export started: " + exportFilename);
     }
 
@@ -1679,7 +2177,7 @@ public class VideoGlitcher extends PApplet {
 
         exporting = true;
         updateExportButtons();
-        statusLabel.setText("Status: processing full video to " + exportFilename);
+        setStatusMessage("Status: processing full video to " + exportFilename);
         println("Full-process export started: " + exportFilename);
     }
 
@@ -1712,10 +2210,10 @@ public class VideoGlitcher extends PApplet {
         updateExportButtons();
 
         if (completedMode == ExportMode.FULL_PROCESS) {
-            statusLabel.setText("Status: full-process export finished");
+            setStatusMessage("Status: full-process export finished");
             println("Full-process export finished");
         } else {
-            statusLabel.setText("Status: interactive export finished");
+            setStatusMessage("Status: interactive export finished");
             println("Interactive export finished");
         }
     }
@@ -1744,7 +2242,7 @@ public class VideoGlitcher extends PApplet {
             startPlayback();
         }
         updateExportButtons();
-        statusLabel.setText("Status: export failed");
+        setStatusMessage("Status: export failed");
         println(message);
         if (launchOptions.smokeTest()) {
             finishSmokeRun(false, message);
@@ -1759,14 +2257,14 @@ public class VideoGlitcher extends PApplet {
         if (paused) {
             pausedFrame = video.get();
             video.pause();
-            statusLabel.setText("Status: paused " + currentVideoName);
+            setStatusMessage("Status: paused " + currentVideoName);
         } else {
             pausedFrame = null;
             if (isAtPlaybackEnd()) {
                 video.jump(0);
             }
             startPlayback();
-            statusLabel.setText("Status: previewing " + currentVideoName);
+            setStatusMessage("Status: previewing " + currentVideoName);
         }
 
         updatePausePlayButton();
@@ -1810,12 +2308,12 @@ public class VideoGlitcher extends PApplet {
                     finishSmokeRun(true, "Smoke full-process export completed");
                 }
             } else {
-                statusLabel.setText("Status: interactive export reached end, click Export Stop");
+                setStatusMessage("Status: interactive export reached end, click Export Stop");
             }
             return;
         }
 
-        statusLabel.setText("Status: finished " + currentVideoName);
+        setStatusMessage("Status: finished " + currentVideoName);
     }
 
     private void updatePausePlayButton() {
