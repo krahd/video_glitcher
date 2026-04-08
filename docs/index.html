@@ -516,7 +516,7 @@
                 The app runs as a <a href="https://processing.org/">Processing</a> desktop sketch with realtime preview, live export, a dedicated retro control bank for VHS and old-digicam distortion, and a full-process mode that locks the current settings and renders the clip from start to finish.
             </p>
             <div class="hero-meta">
-                <span class="pill">v1.1.0</span>
+                <span class="pill">v1.1.2</span>
                 <span class="pill">Fullscreen preview</span>
                 <span class="pill">Preset-driven damage</span>
                 <span class="pill">VHS + digicam retro modes</span>
@@ -531,7 +531,7 @@
             <div class="fact-grid">
                 <article class="fact-card">
                     <div class="fact-label">Status</div>
-                    <div class="fact-value">v1.1.0 adds a retro distortion bank with VHS and old-digicam presets, six analogue-style toggles, and compact or expanded control modes.</div>
+                    <div class="fact-value">v1.1.2 keeps the preset-driven retro bank, adds a grid-based preset picker with Random, and tightens the fullscreen control panel so the advanced layout ends at the HUD.</div>
                 </article>
                 <article class="fact-card">
                     <div class="fact-label">Clients</div>
@@ -589,9 +589,9 @@
                 <article class="manual-card">
                     <ol>
                         <li>Launch the app and load a video with the button, a click on the empty state, or the <code>L</code> key.</li>
-                        <li>Pick a preset such as <code>Cinematic</code>, <code>VHS Decay</code>, <code>Old Digicam</code>, or <code>Extreme</code>.</li>
+                        <li>Pick a preset from the button grid, including <code>Cinematic</code>, <code>VHS Decay</code>, <code>Old Digicam</code>, <code>Extreme</code>, or <code>Random</code>.</li>
                         <li>Tune intensity, frequency, burst timing, and individual effect toggles while the preview is running.</li>
-                        <li>Open the retro section in compact mode for quick analogue toggles, or switch to expanded mode for per-effect VHS and digicam sliders.</li>
+                        <li>Use the top-right <code>Advanced</code> toggle to switch the whole control surface between <code>compact</code> and <code>full</code>. Compact keeps only the presets and a small set of high-level sliders, while full opens the vertical advanced panel with scrolling.</li>
                         <li>Use <code>G</code> to toggle glitching, <code>Space</code> to pause, and <code>F</code> to freeze on a frame.</li>
                         <li>Use <code>Export Start</code> or <code>E</code> for live export when you want to keep tweaking parameters while the clip plays.</li>
                         <li>Use <code>Process Full</code> or <code>P</code> when you want a save dialog, a frozen snapshot of the current settings, and a full automatic render from frame 0 to the clip end.</li>
@@ -609,7 +609,12 @@
                         <span class="control-chip"><code>E</code> live export</span>
                         <span class="control-chip"><code>P</code> save + process full clip</span>
                         <span class="control-chip"><code>S</code> save PNG frame</span>
-                        <span class="control-chip">Retro: compact / expanded</span>
+                        <span class="control-chip">Preset grid + Random</span>
+                        <span class="control-chip">Advanced toggle</span>
+                        <span class="control-chip">GUI: compact / full</span>
+                        <span class="control-chip">Digital Intensity / Glitch Activity</span>
+                        <span class="control-chip">Analogue Intensity / Damage Texture</span>
+                        <span class="control-chip">Mouse wheel scroll in full mode</span>
                         <span class="control-chip">Tracking Tear / Head Switch</span>
                         <span class="control-chip">Chroma Drift / Scanline Wobble</span>
                         <span class="control-chip">Vertical Smear / Column Drift</span>
