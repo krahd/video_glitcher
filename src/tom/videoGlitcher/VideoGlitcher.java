@@ -855,7 +855,7 @@ public class VideoGlitcher extends PApplet {
             guiViewportBottom = footerY - 18;
             clampGuiScroll();
             
-            int logicalY = 0;
+            int logicalY = 20;
             
             logicalY = layoutScrollableSliderRow("glitchIntensity", x, logicalY, true);
             logicalY = layoutScrollableSliderRow("glitchFrequency", x, logicalY, true);
