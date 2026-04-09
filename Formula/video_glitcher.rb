@@ -1,15 +1,15 @@
 class VideoGlitcher < Formula
   desc "Realtime desktop app for glitching video and exporting corrupted MP4 files"
   homepage "https://krahd.github.io/video_glitcher/"
-  version "1.0.6"
+  version "1.1.3"
 
   on_macos do
-    url "https://github.com/krahd/video_glitcher/releases/download/v1.0.6/video_glitcher-macos-aarch64.zip"
+    url "https://github.com/krahd/video_glitcher/releases/download/v1.1.3/video_glitcher-macos-aarch64.zip"
     sha256 "51c1171d7bf3338e9b58a785ef303af343b082bc035280d3ca314396eebb083a"
   end
 
   on_linux do
-    url "https://github.com/krahd/video_glitcher/releases/download/v1.0.6/video_glitcher-linux-amd64.zip"
+    url "https://github.com/krahd/video_glitcher/releases/download/v1.1.3/video_glitcher-linux-amd64.zip"
     sha256 "d71d5b9299f7e17c881e5ca211c504b1ab321289f66aec2518ac53302a421161"
   end
 

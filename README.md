@@ -8,7 +8,7 @@ video_glitcher is a Java app built with [Processing](http://processing.org) as a
 
 Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_glitcher/)
 
-Current version: `v1.1.2`
+Current version: `v1.1.3`
 
 The repository is self-contained and includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows. Export uses `ffmpeg` from your system `PATH`.
 
