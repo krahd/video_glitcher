@@ -49,7 +49,7 @@ public class VideoGlitcher extends PApplet {
     private static final int GUI_TOGGLE_GAP = 26;
     private static final int GUI_SECTION_GAP = 18;
     private static final int PRESET_GRID_COLUMNS = 4;
-    private static final int PRESET_BUTTON_W = 100;
+    private static final int PRESET_BUTTON_W = 112;
     private static final int PRESET_BUTTON_H = 30;
     private static final int PRESET_GRID_GAP = 8;
     private static final int BUTTON_LABEL_SIZE = 12;
@@ -58,13 +58,18 @@ public class VideoGlitcher extends PApplet {
     private static final int FOOTER_BUTTON_H = 30;
     private static final int FOOTER_BUTTON_GAP = 8;
     private static final int FOOTER_ROW_STEP = 38;
-    private static final int FOOTER_LOAD_BUTTON_W = 72;
-    private static final int FOOTER_REWIND_BUTTON_W = 96;
-    private static final int FOOTER_PLAY_BUTTON_W = 72;
-    private static final int FOOTER_PLAYBACK_MODE_BUTTON_W = 56;
-    private static final int FOOTER_GLITCH_BUTTON_W = 88;
-    private static final int FOOTER_EXPORT_BUTTON_W = 96;
-    private static final int FOOTER_PROCESS_BUTTON_W = 296;
+    // All button rows: total width 464px (4x112 + 3x8)
+    private static final int FOOTER_ROW_TOTAL_W = 464;
+    private static final int FOOTER_LOAD_BUTTON_W = 112;
+    private static final int FOOTER_REWIND_BUTTON_W = 112;
+    private static final int FOOTER_PLAY_BUTTON_W = 112;
+    private static final int FOOTER_PLAYBACK_MODE_BUTTON_W = 112;
+    // Middle row: 3 buttons, expand Export/Stop to fill row
+    private static final int FOOTER_GLITCH_BUTTON_W = 112;
+    private static final int FOOTER_EXPORT_BUTTON_W = 168;
+    private static final int FOOTER_STOP_EXPORT_BUTTON_W = 168;
+    // Bottom row: 1 button, expand to fill row
+    private static final int FOOTER_PROCESS_BUTTON_W = 464;
     private static final int ADVANCED_TOGGLE_X_OFFSET = 324;
     private static final int ADVANCED_LABEL_X_OFFSET = 350;
     private static final int ADVANCED_TOGGLE_Y_OFFSET = 0;
@@ -186,7 +191,7 @@ public class VideoGlitcher extends PApplet {
 
     private int panelX = 12;
     private int panelY = 12;
-    private int panelW = 458;
+    private int panelW = 520;
     private int panelH = 904;
 
     private int guiX = panelX + 14;
@@ -326,8 +331,7 @@ public class VideoGlitcher extends PApplet {
             }
         } else if (key == 'h' || key == 'H') {
             showHUD = !showHUD;
-        } else if (key == 'u' || key == 'U') {
-            showGUI = !showGUI;
+            showGUI = showHUD;
         } else if (key == 'g' || key == 'G') {
             toggleGlitching();
         } else if (key == 'e' || key == 'E') {
@@ -346,6 +350,17 @@ public class VideoGlitcher extends PApplet {
     public void mousePressed() {
         if (video == null && !movieReady && !selectingVideo && !isPointerOverGui()) {
             promptForVideo();
+        }
+        // Toggle advanced checkbox if label is clicked
+        Textlabel advancedLabel = guiLabels.get("lbl_advancedGui");
+        if (advancedLabel != null) {
+            float ax = advancedLabel.getPosition()[0], ay = advancedLabel.getPosition()[1];
+            float aw = advancedLabel.getWidth(), ah = advancedLabel.getHeight();
+            if (mouseX >= ax && mouseX <= ax + aw && mouseY >= ay && mouseY <= ay + ah) {
+                if (advancedGuiToggle != null) {
+                    advancedGuiToggle.setValue(advancedGuiToggle.getValue() < 0.5f ? 1.0f : 0.0f);
+                }
+            }
         }
     }
 
@@ -422,10 +437,12 @@ public class VideoGlitcher extends PApplet {
         cp5.setFont(guiFont);
 
         int x = guiX;
-        int y = guiY;
+        // Move all UI elements down to give space for DIGITAL DISTORTIONS label
+        int y = guiY + 18;
 
         guiTitleLabel = addGuiLabel("guiTitle", x, y, "video_glitcher");
         guiTitleLabel.setFont(guiTitleFont);
+        guiTitleLabel.setColor(color(255, 220, 40)); // yellow
 
         advancedGuiToggle = cp5.addToggle("advancedGui")
             .setPosition(x + ADVANCED_TOGGLE_X_OFFSET, y + ADVANCED_TOGGLE_Y_OFFSET)
@@ -436,9 +453,17 @@ public class VideoGlitcher extends PApplet {
 
         y += GUI_HEADER_HEIGHT;
 
+
         presetSectionLabel = addGuiLabel("presetSection", x, y, "PRESETS");
         presetSectionLabel.setFont(guiTitleFont);
+        presetSectionLabel.getValueLabel().align(ControlP5.LEFT, ControlP5.CENTER);
         addPresetButtons(x, y + 24);
+
+        // Add DIGITAL DISTORTIONS label below preset buttons
+        int digitalDistortionsY = y + 24 + ((PRESET_NAMES.length + PRESET_GRID_COLUMNS - 1) / PRESET_GRID_COLUMNS) * (PRESET_BUTTON_H + PRESET_GRID_GAP) + 24;
+        Textlabel digitalDistortionsLabel = addGuiLabel("digitalDistortionsSection", x, digitalDistortionsY, "DIGITAL DISTORTIONS");
+        digitalDistortionsLabel.setFont(guiTitleFont);
+        digitalDistortionsLabel.getValueLabel().align(ControlP5.LEFT, ControlP5.CENTER);
 
         addSliderRow("glitchIntensity", x, y, sliderW, sliderH, 0.1f, 2.0f, glitchIntensity, "Digital Intensity");
         addSliderRow("glitchFrequency", x, y, sliderW, sliderH, 0.0f, 1.0f, glitchFrequency, "Glitch Activity");
@@ -463,6 +488,7 @@ public class VideoGlitcher extends PApplet {
 
         retroSectionLabel = addGuiLabel("retroSection", x, y, "RETRO DISTORTIONS");
         retroSectionLabel.setFont(guiTitleFont);
+        retroSectionLabel.getValueLabel().align(ControlP5.LEFT, ControlP5.CENTER);
 
         addSliderRow("retroAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, retroAmount, "Analogue Intensity");
         addSliderRow("retroJitter", x, y, sliderW, sliderH, 0.0f, 1.0f, retroJitter, "Analogue Jitter");
@@ -528,16 +554,16 @@ public class VideoGlitcher extends PApplet {
 
         stopExportButton = cp5.addButton("stopExport")
             .setPosition(stopExportButtonX, secondRowY)
-            .setSize(FOOTER_EXPORT_BUTTON_W, FOOTER_BUTTON_H)
+            .setSize(FOOTER_STOP_EXPORT_BUTTON_W, FOOTER_BUTTON_H)
                 .setLabel("Export Stop");
         styleFooterButton(stopExportButton);
 
         y += FOOTER_ROW_STEP;
 
         processVideoButton = cp5.addButton("processVideo")
-                .setPosition(x, y)
+            .setPosition(x, y)
             .setSize(FOOTER_PROCESS_BUTTON_W, FOOTER_BUTTON_H)
-                .setLabel(PROCESS_FULL_LABEL);
+            .setLabel(PROCESS_FULL_LABEL);
         styleFooterButton(processVideoButton);
 
         refreshGuiLayout();
@@ -1320,7 +1346,7 @@ public class VideoGlitcher extends PApplet {
         float hudY = hudTopY();
         float hudW = width - HUD_MARGIN * 2.0f;
 
-        fill(255, 220);
+        fill(0, 192);
         noStroke();
         rect(hudX, hudY, hudW, HUD_HEIGHT, 8);
 
