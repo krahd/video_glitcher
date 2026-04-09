@@ -65,9 +65,9 @@ public class VideoGlitcher extends PApplet {
     private static final int FOOTER_PLAY_BUTTON_W = 112;
     private static final int FOOTER_PLAYBACK_MODE_BUTTON_W = 112;
     // Middle row: 3 buttons, expand Export/Stop to fill row
-    private static final int FOOTER_GLITCH_BUTTON_W = 112;
-    private static final int FOOTER_EXPORT_BUTTON_W = 168;
-    private static final int FOOTER_STOP_EXPORT_BUTTON_W = 168;
+    private static final int FOOTER_GLITCH_BUTTON_W = 149;
+    private static final int FOOTER_EXPORT_BUTTON_W = 149;
+    private static final int FOOTER_STOP_EXPORT_BUTTON_W = 158;
     // Bottom row: 1 button, expand to fill row
     private static final int FOOTER_PROCESS_BUTTON_W = 472;
     private static final int ADVANCED_TOGGLE_X_OFFSET = 324;
@@ -351,16 +351,45 @@ public class VideoGlitcher extends PApplet {
         if (video == null && !movieReady && !selectingVideo && !isPointerOverGui()) {
             promptForVideo();
         }
-        // Toggle advanced checkbox if label is clicked
-        Textlabel advancedLabel = guiLabels.get("lbl_advancedGui");
-        if (advancedLabel != null) {
-            float ax = advancedLabel.getPosition()[0], ay = advancedLabel.getPosition()[1];
-            float aw = advancedLabel.getWidth(), ah = advancedLabel.getHeight();
-            if (mouseX >= ax && mouseX <= ax + aw && mouseY >= ay && mouseY <= ay + ah) {
-                if (advancedGuiToggle != null) {
-                    advancedGuiToggle.setValue(advancedGuiToggle.getValue() < 0.5f ? 1.0f : 0.0f);
-                }
-            }
+        handleToggleLabelClick("advancedGui", guiLabels.get("lbl_advancedGui"), advancedGuiToggle);
+        handleToggleLabelClick("useRGBSplit");
+        handleToggleLabelClick("useSlices");
+        handleToggleLabelClick("useBlocks");
+        handleToggleLabelClick("useBars");
+        handleToggleLabelClick("useDropouts");
+        handleToggleLabelClick("useGhosts");
+        handleToggleLabelClick("useFreeze");
+        handleToggleLabelClick("useScanBursts");
+        handleToggleLabelClick("useFlash");
+        handleToggleLabelClick("useMicroJitter");
+        handleToggleLabelClick("useZoomWobble");
+        handleToggleLabelClick("useTrackingTear");
+        handleToggleLabelClick("useHeadSwitchBand");
+        handleToggleLabelClick("useChromaDrift");
+        handleToggleLabelClick("useScanlineWobble");
+        handleToggleLabelClick("useVerticalSmear");
+        handleToggleLabelClick("useColumnDrift");
+    }
+
+    private void handleToggleLabelClick(String toggleName) {
+        Controller<?> controller = cp5.getController(toggleName);
+        Textlabel label = guiLabels.get("lbl_" + toggleName);
+        if (controller instanceof Toggle toggle) {
+            handleToggleLabelClick(toggleName, label, toggle);
+        }
+    }
+
+    private void handleToggleLabelClick(String toggleName, Textlabel label, Toggle toggle) {
+        if (label == null || toggle == null || !label.isVisible() || !toggle.isVisible()) {
+            return;
+        }
+
+        float lx = label.getPosition()[0];
+        float ly = label.getPosition()[1];
+        float lw = label.getWidth();
+        float lh = label.getHeight();
+        if (mouseX >= lx && mouseX <= lx + lw && mouseY >= ly && mouseY <= ly + lh) {
+            toggle.setValue(toggle.getValue() < 0.5f ? 1.0f : 0.0f);
         }
     }
     
@@ -494,17 +523,17 @@ public class VideoGlitcher extends PApplet {
         
         addSliderRow("retroAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, retroAmount, "Analogue Intensity");
         addSliderRow("retroJitter", x, y, sliderW, sliderH, 0.0f, 1.0f, retroJitter, "Analogue Jitter");
+        addSliderRow("trackingDrift", x, y, sliderW, sliderH, 0.0f, 1.0f, trackingDrift, "Tracking Drift");
+        addSliderRow("headSwitchHeight", x, y, sliderW, sliderH, 0.0f, 1.0f, headSwitchHeight, "Head Switch Height");
+        addSliderRow("chromaOffset", x, y, sliderW, sliderH, 0.0f, 1.0f, chromaOffset, "Chroma Offset");
+        addSliderRow("smearStrength", x, y, sliderW, sliderH, 0.0f, 1.0f, smearStrength, "Smear Strength");
+        addSliderRow("columnDriftAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, columnDriftAmount, "Column Drift");
         addToggleRow("useTrackingTear", "Tracking Tear", x, y);
         addToggleRow("useHeadSwitchBand", "Head Switch", x, y);
         addToggleRow("useChromaDrift", "Chroma Drift", x, y);
         addToggleRow("useScanlineWobble", "Scanline Wobble", x, y);
         addToggleRow("useVerticalSmear", "Vertical Smear", x, y);
         addToggleRow("useColumnDrift", "Column Drift", x, y);
-        addSliderRow("trackingDrift", x, y, sliderW, sliderH, 0.0f, 1.0f, trackingDrift, "Tracking Drift");
-        addSliderRow("headSwitchHeight", x, y, sliderW, sliderH, 0.0f, 1.0f, headSwitchHeight, "Head Switch Height");
-        addSliderRow("chromaOffset", x, y, sliderW, sliderH, 0.0f, 1.0f, chromaOffset, "Chroma Offset");
-        addSliderRow("smearStrength", x, y, sliderW, sliderH, 0.0f, 1.0f, smearStrength, "Smear Strength");
-        addSliderRow("columnDriftAmount", x, y, sliderW, sliderH, 0.0f, 1.0f, columnDriftAmount, "Column Drift");
         
         int firstRowY = y;
         int loadButtonX = x;
@@ -769,14 +798,12 @@ public class VideoGlitcher extends PApplet {
             logicalY += 24;
             logicalY += rowGap;
             logicalY += rowGap;
+            logicalY += rowGap;
+            logicalY += rowGap;
+            logicalY += rowGap;
+            logicalY += rowGap;
+            logicalY += rowGap;
             logicalY += GUI_TOGGLE_GAP * 6;
-            logicalY += GUI_SECTION_GAP;
-            
-            logicalY += rowGap;
-            logicalY += rowGap;
-            logicalY += rowGap;
-            logicalY += rowGap;
-            logicalY += rowGap;
             
             return logicalY + 8;
         }
@@ -908,19 +935,17 @@ public class VideoGlitcher extends PApplet {
             if (!compactGuiMode) {
                 logicalY = layoutScrollableLabel(retroSectionLabel, x, logicalY, 24, true);
                 logicalY = layoutScrollableSliderRow("retroJitter", x, logicalY, true);
+                logicalY = layoutScrollableSliderRow("trackingDrift", x, logicalY, true);
+                logicalY = layoutScrollableSliderRow("headSwitchHeight", x, logicalY, true);
+                logicalY = layoutScrollableSliderRow("chromaOffset", x, logicalY, true);
+                logicalY = layoutScrollableSliderRow("smearStrength", x, logicalY, true);
+                logicalY = layoutScrollableSliderRow("columnDriftAmount", x, logicalY, true);
                 logicalY = layoutScrollableToggleRow("useTrackingTear", x, logicalY, true);
                 logicalY = layoutScrollableToggleRow("useHeadSwitchBand", x, logicalY, true);
                 logicalY = layoutScrollableToggleRow("useChromaDrift", x, logicalY, true);
                 logicalY = layoutScrollableToggleRow("useScanlineWobble", x, logicalY, true);
                 logicalY = layoutScrollableToggleRow("useVerticalSmear", x, logicalY, true);
                 logicalY = layoutScrollableToggleRow("useColumnDrift", x, logicalY, true);
-                logicalY += GUI_SECTION_GAP;
-                
-                logicalY = layoutScrollableSliderRow("trackingDrift", x, logicalY, true);
-                logicalY = layoutScrollableSliderRow("headSwitchHeight", x, logicalY, true);
-                logicalY = layoutScrollableSliderRow("chromaOffset", x, logicalY, true);
-                logicalY = layoutScrollableSliderRow("smearStrength", x, logicalY, true);
-                logicalY = layoutScrollableSliderRow("columnDriftAmount", x, logicalY, true);
             } else {
                 if (retroSectionLabel != null) {
                     retroSectionLabel.setVisible(false);
