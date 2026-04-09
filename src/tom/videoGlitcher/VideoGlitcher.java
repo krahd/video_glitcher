@@ -58,8 +58,8 @@ public class VideoGlitcher extends PApplet {
     private static final int FOOTER_BUTTON_H = 30;
     private static final int FOOTER_BUTTON_GAP = 8;
     private static final int FOOTER_ROW_STEP = 38;
-    // All button rows: total width 464px (4x112 + 3x8)
-    private static final int FOOTER_ROW_TOTAL_W = 464;
+    // All button rows: total width 472px (4x112 + 3x8)
+    private static final int FOOTER_ROW_TOTAL_W = 472;
     private static final int FOOTER_LOAD_BUTTON_W = 112;
     private static final int FOOTER_REWIND_BUTTON_W = 112;
     private static final int FOOTER_PLAY_BUTTON_W = 112;
@@ -69,7 +69,7 @@ public class VideoGlitcher extends PApplet {
     private static final int FOOTER_EXPORT_BUTTON_W = 168;
     private static final int FOOTER_STOP_EXPORT_BUTTON_W = 168;
     // Bottom row: 1 button, expand to fill row
-    private static final int FOOTER_PROCESS_BUTTON_W = 464;
+    private static final int FOOTER_PROCESS_BUTTON_W = 472;
     private static final int ADVANCED_TOGGLE_X_OFFSET = 324;
     private static final int ADVANCED_LABEL_X_OFFSET = 350;
     private static final int ADVANCED_TOGGLE_Y_OFFSET = 0;
@@ -856,7 +856,11 @@ public class VideoGlitcher extends PApplet {
             clampGuiScroll();
             
             int logicalY = 20;
-            
+
+            // Ensure the DIGITAL DISTORTIONS section label is part of the scrollable area
+            Textlabel digitalLabel = guiLabels.get("digitalDistortionsSection");
+            logicalY = layoutScrollableLabel(digitalLabel, x, logicalY, 24, true);
+
             logicalY = layoutScrollableSliderRow("glitchIntensity", x, logicalY, true);
             logicalY = layoutScrollableSliderRow("glitchFrequency", x, logicalY, true);
             logicalY = layoutScrollableSliderRow("retroAmount", x, logicalY, true);
