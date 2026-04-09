@@ -5,12 +5,12 @@ class VideoGlitcher < Formula
 
   on_macos do
     url "https://github.com/krahd/video_glitcher/releases/download/v1.1.3/video_glitcher-macos-aarch64.zip"
-    sha256 "51c1171d7bf3338e9b58a785ef303af343b082bc035280d3ca314396eebb083a"
+    sha256 "a8230992f7be7cf9c8bd4e61936027b9c2ee8a94a1908e39b66d893aea1add53"
   end
 
   on_linux do
     url "https://github.com/krahd/video_glitcher/releases/download/v1.1.3/video_glitcher-linux-amd64.zip"
-    sha256 "d71d5b9299f7e17c881e5ca211c504b1ab321289f66aec2518ac53302a421161"
+    sha256 "ea91ce05fc7a59c4e46057b7618b4adc7fb96741a03513930d6c7dc464956efb"
   end
 
   depends_on "ffmpeg"
