@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-05-07 00:15
+Last updated: 2026-10-02 23:27
 
 ## Project purpose
 
@@ -167,3 +167,11 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 ---
 
 Last updated: 2026-05-07 00:15
+
+## Supported-build distribution layer
+
+- Added `scripts/package_supported_build.py` to stage the existing three release ZIPs into a paid-support delivery directory without renaming or modifying the free release artefacts.
+- The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
+- No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
+
+Last updated: 2026-10-02 23:27
