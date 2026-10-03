@@ -179,6 +179,8 @@ These create release archives in `dist/` for each platform, for example:
 
 Each bundle contains the application jar, the required libraries, the platform-specific video natives, and the matching launcher script.
 
+For a supported paid distribution without changing the free GitHub releases, see [Supported builds](docs/SUPPORTED_BUILD.md).
+
 ### Debug launch
 
 Use:
