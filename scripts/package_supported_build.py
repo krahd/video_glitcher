@@ -41,7 +41,9 @@ def git_head(repo: Path) -> str:
     return result.stdout.strip()
 
 
-def stage_supported_build(repo: Path, source: Path, output: Path, version: str) -> dict:
+def stage_supported_build(repo: Path, source: Path, output: Path, version: str, *, internal_provenance_only: bool = False) -> dict:
+    if not internal_provenance_only:
+        raise RuntimeError("v1.1.3 release archives are not cleared for paid redistribution; see docs/REDISTRIBUTION-AUDIT.md")
     missing = [name for name in ASSETS if not (source / name).is_file()]
     if missing:
         raise FileNotFoundError("Missing required release asset(s): " + ", ".join(missing))
@@ -67,8 +69,8 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         "version": version,
         "sourceCommit": git_head(repo),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "distribution": "supported-build",
-        "redistributionStatus": "blocked-pending-third-party-runtime-audit",
+        "distribution": "internal-provenance-staging",
+        "redistributionClearance": "not-cleared",
         "licensing": "No DRM or licence key is added by this packaging step; upstream project licensing remains unchanged.",
         "supportScope": "Supported download packaging and installation/runtime troubleshooting for the packaged build; no guarantee of future feature work.",
         "assets": assets,
@@ -81,8 +83,7 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         "This directory contains the same platform release bundles prepared for a supported-download offering. "
         "No DRM or licence key has been added. Verify downloads against SHA256SUMS.\n\n"
         "Included platforms:\n- macOS Apple Silicon\n- Linux x86_64\n- Windows x86_64\n\n"
-        "MP4 export requires ffmpeg on PATH. Native video playback depends on the bundled platform-specific Processing/GStreamer runtime.\n\n"
-        "IMPORTANT: this staging output is NOT cleared for paid redistribution. See third_party/REDISTRIBUTION-AUDIT.md in the source repository.\n"
+        "MP4 export requires ffmpeg on PATH. Native video playback depends on the bundled platform-specific Processing/GStreamer runtime.\n"
     )
     return manifest
 
@@ -92,9 +93,10 @@ def main() -> int:
     parser.add_argument("--version", required=True, help="Release version shown in the support manifest, e.g. v1.1.3")
     parser.add_argument("--source", type=Path, default=Path("dist"), help="Directory containing the three release ZIPs")
     parser.add_argument("--output", type=Path, default=Path("dist/supported-build"), help="Ignored staging directory")
+    parser.add_argument("--internal-provenance-only", action="store_true", help="Allow internal checksum/provenance staging only; does not clear paid redistribution")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
-    manifest = stage_supported_build(repo, args.source.resolve(), args.output.resolve(), args.version)
+    manifest = stage_supported_build(repo, args.source.resolve(), args.output.resolve(), args.version, internal_provenance_only=args.internal_provenance_only)
     print(json.dumps({"status": "ok", "output": str(args.output), "assets": len(manifest["assets"]), "version": args.version}, sort_keys=True))
     return 0
 
