@@ -35,12 +35,14 @@ class SupportedBuildPackagingTests(unittest.TestCase):
         self.assertEqual([entry["file"] for entry in manifest["assets"]], list(module.ASSETS))
         self.assertEqual(manifest["sourceCommit"], "abc123")
         self.assertEqual(manifest["distribution"], "supported-build")
+        self.assertEqual(manifest["redistributionStatus"], "blocked-pending-third-party-runtime-audit")
         self.assertIn("No DRM", manifest["licensing"])
         sums = (output / "SHA256SUMS").read_text().splitlines()
         self.assertEqual(len(sums), 3)
         self.assertTrue(all((output / name).is_file() for name in module.ASSETS))
         stored = json.loads((output / "support-manifest.json").read_text())
         self.assertEqual(stored["version"], "v1.1.3")
+        self.assertIn("NOT cleared for paid redistribution", (output / "README-SUPPORTED-BUILD.txt").read_text())
 
     def test_fails_closed_when_release_asset_missing(self) -> None:
         source = self.temp_dir / "source"

@@ -17,3 +17,10 @@ python3 scripts/package_supported_build.py --version v1.1.3
 The output directory is under `dist/` and remains generated/ignored. A paid storefront should receive the generated platform ZIPs and metadata from this directory rather than a second source fork. The underlying project licence remains unchanged; payment is for the convenient tested distribution and support layer, not for restricting the upstream source.
 
 Before offering a supported build, run the repository's normal build, logic-test, and appropriate smoke/release checks for the release commit. MP4 export still requires `ffmpeg` on `PATH`, and native video playback still depends on the bundled platform-specific Processing/GStreamer runtime.
+
+
+## Redistribution status
+
+The staging workflow is **not cleared for paid redistribution**. A release-archive audit found a substantially broader multimedia runtime than the original dependency inventory, including FFmpeg-family libraries, x264, FDK AAC, OpenH264, VisualOn AAC and a large GStreamer plugin/runtime tree. See `third_party/REDISTRIBUTION-AUDIT.md`.
+
+Do not upload the current release archives to a paid storefront, describe them as redistribution-ready, or spend further effort on entitlement/signing/storefront polish for this hypothesis until that audit is closed with exact provenance and applicable licence/source/patent obligations.

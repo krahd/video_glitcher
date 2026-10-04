@@ -68,6 +68,7 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         "sourceCommit": git_head(repo),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "distribution": "supported-build",
+        "redistributionStatus": "blocked-pending-third-party-runtime-audit",
         "licensing": "No DRM or licence key is added by this packaging step; upstream project licensing remains unchanged.",
         "supportScope": "Supported download packaging and installation/runtime troubleshooting for the packaged build; no guarantee of future feature work.",
         "assets": assets,
@@ -80,7 +81,8 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         "This directory contains the same platform release bundles prepared for a supported-download offering. "
         "No DRM or licence key has been added. Verify downloads against SHA256SUMS.\n\n"
         "Included platforms:\n- macOS Apple Silicon\n- Linux x86_64\n- Windows x86_64\n\n"
-        "MP4 export requires ffmpeg on PATH. Native video playback depends on the bundled platform-specific Processing/GStreamer runtime.\n"
+        "MP4 export requires ffmpeg on PATH. Native video playback depends on the bundled platform-specific Processing/GStreamer runtime.\n\n"
+        "IMPORTANT: this staging output is NOT cleared for paid redistribution. See third_party/REDISTRIBUTION-AUDIT.md in the source repository.\n"
     )
     return manifest
 
