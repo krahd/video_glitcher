@@ -15,17 +15,6 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-COMPLIANCE_ROOT = Path(__file__).resolve().parents[1] / "third_party"
-COMPLIANCE_FILES = (
-    "THIRD-PARTY-NOTICES.md",
-    "SOURCE-ACCESS.md",
-    "source-manifest.json",
-    "licenses/LGPL-2.1.txt",
-    "licenses/GPL-2.0.txt",
-    "licenses/Apache-2.0.txt",
-    "licenses/BSD-3-Clause.txt",
-)
-
 ASSETS = (
     "video_glitcher-macos-aarch64.zip",
     "video_glitcher-linux-amd64.zip",
@@ -53,10 +42,6 @@ def git_head(repo: Path) -> str:
 
 
 def stage_supported_build(repo: Path, source: Path, output: Path, version: str) -> dict:
-    missing_compliance = [name for name in COMPLIANCE_FILES if not (COMPLIANCE_ROOT / name).is_file()]
-    if missing_compliance:
-        raise FileNotFoundError("Missing third-party compliance file(s): " + ", ".join(missing_compliance))
-
     missing = [name for name in ASSETS if not (source / name).is_file()]
     if missing:
         raise FileNotFoundError("Missing required release asset(s): " + ", ".join(missing))
@@ -76,7 +61,6 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         checksum_lines.append(f"{digest}  {name}")
 
     (output / "SHA256SUMS").write_text("\n".join(checksum_lines) + "\n")
-    shutil.copytree(COMPLIANCE_ROOT, output / "third-party")
     manifest = {
         "schema": 1,
         "product": "video_glitcher",
@@ -84,13 +68,9 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         "sourceCommit": git_head(repo),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "distribution": "supported-build",
+        "redistributionStatus": "blocked-pending-third-party-runtime-audit",
         "licensing": "No DRM or licence key is added by this packaging step; upstream project licensing remains unchanged.",
         "supportScope": "Supported download packaging and installation/runtime troubleshooting for the packaged build; no guarantee of future feature work.",
-        "thirdPartyCompliance": {
-            "notices": "third-party/THIRD-PARTY-NOTICES.md",
-            "sourceAccess": "third-party/SOURCE-ACCESS.md",
-            "sourceManifest": "third-party/source-manifest.json",
-        },
         "assets": assets,
     }
     (output / "support-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
@@ -102,7 +82,7 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str) 
         "No DRM or licence key has been added. Verify downloads against SHA256SUMS.\n\n"
         "Included platforms:\n- macOS Apple Silicon\n- Linux x86_64\n- Windows x86_64\n\n"
         "MP4 export requires ffmpeg on PATH. Native video playback depends on the bundled platform-specific Processing/GStreamer runtime.\n\n"
-        "Third-party notices, licence texts and source-access information are in the third-party/ directory.\n"
+        "IMPORTANT: this staging output is NOT cleared for paid redistribution. See third_party/REDISTRIBUTION-AUDIT.md in the source repository.\n"
     )
     return manifest
 
