@@ -17,3 +17,10 @@ python3 scripts/package_supported_build.py --version v1.1.3
 The output directory is under `dist/` and remains generated/ignored. A paid storefront should receive the generated platform ZIPs and metadata from this directory rather than a second source fork. The underlying project licence remains unchanged; payment is for the convenient tested distribution and support layer, not for restricting the upstream source.
 
 Before offering a supported build, run the repository's normal build, logic-test, and appropriate smoke/release checks for the release commit. MP4 export still requires `ffmpeg` on `PATH`, and native video playback still depends on the bundled platform-specific Processing/GStreamer runtime.
+
+
+## Third-party compliance
+
+Every supported-build staging directory must include `third-party/THIRD-PARTY-NOTICES.md`, the standard licence texts, `third-party/source-manifest.json`, and `third-party/SOURCE-ACCESS.md`. Packaging fails closed if any required compliance file is absent.
+
+The source manifest pins the exact binary fingerprints of the redistributed Java libraries and exact Cerbero source/checksum provenance for FFmpeg 4.4 and x264 snapshot 20191217-2245. It deliberately does not infer a licence for video_glitcher itself. Paid redistribution remains blocked until the project-level licence is explicitly selected and committed, and the source-offer support contact exists.

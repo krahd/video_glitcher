@@ -41,6 +41,12 @@ class SupportedBuildPackagingTests(unittest.TestCase):
         self.assertTrue(all((output / name).is_file() for name in module.ASSETS))
         stored = json.loads((output / "support-manifest.json").read_text())
         self.assertEqual(stored["version"], "v1.1.3")
+        self.assertEqual(stored["thirdPartyCompliance"]["notices"], "third-party/THIRD-PARTY-NOTICES.md")
+        self.assertTrue((output / "third-party" / "THIRD-PARTY-NOTICES.md").is_file())
+        self.assertTrue((output / "third-party" / "SOURCE-ACCESS.md").is_file())
+        source_manifest = json.loads((output / "third-party" / "source-manifest.json").read_text())
+        self.assertTrue(any(item["name"] == "x264" for item in source_manifest["components"]))
+        self.assertTrue((output / "third-party" / "licenses" / "GPL-2.0.txt").is_file())
 
     def test_fails_closed_when_release_asset_missing(self) -> None:
         source = self.temp_dir / "source"
@@ -50,6 +56,16 @@ class SupportedBuildPackagingTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError) as caught:
             module.stage_supported_build(REPO, source, self.temp_dir / "out", "v1")
         self.assertIn(module.ASSETS[-1], str(caught.exception))
+
+    def test_fails_closed_when_compliance_package_missing(self) -> None:
+        source = self.temp_dir / "source-compliance"
+        source.mkdir()
+        for name in module.ASSETS:
+            (source / name).write_bytes(b"asset")
+        with mock.patch.object(module, "COMPLIANCE_ROOT", self.temp_dir / "missing-compliance"):
+            with self.assertRaises(FileNotFoundError) as caught:
+                module.stage_supported_build(REPO, source, self.temp_dir / "out-compliance", "v1")
+        self.assertIn("third-party compliance", str(caught.exception))
 
 
 if __name__ == "__main__":
