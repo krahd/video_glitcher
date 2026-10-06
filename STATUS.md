@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 17:24
+Last updated: 2026-10-06 22:47
 
 ## Project purpose
 
@@ -27,7 +27,7 @@ The GUI includes compact/full modes, preset buttons, high-level digital/analogue
 
 ## Active focus
 
-Current focus is the draft preview-to-export product candidate: safer new-file-only export, cancellation/recovery, source comparison and preset/workflow guidance. Release bundles and Homebrew remain unchanged. The paid redistribution hold remains in force; this is not a cleared or validated paid product. See `docs/PRODUCT-CANDIDATE-2026-10-06.md`.
+Current focus is the draft preview-to-export product candidate and bounded local-evaluation packaging audit: safe internal staging, truthful archive provenance, argument-preserving launchers and a concrete first-session/platform checklist. Existing release assets and release/Homebrew workflows remain unchanged. See `docs/LOCAL-EVALUATION.md`. The paid redistribution hold remains in force; this is not a cleared or validated paid product. See `docs/PRODUCT-CANDIDATE-2026-10-06.md`.
 
 ## Architecture overview
 
@@ -95,8 +95,8 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 ## Configuration and environment variables
 
-- Java 17 or newer is required.
-- `ffmpeg` must be available on `PATH` for MP4 export.
+- Java 21 with desktop/AWT support is the documented current build/release contract; source compilation uses JDK 21. Release CI does not target Java 17. Python 3.11+ is required for internal inspection/tests.
+- System `ffmpeg` with the `libx264` encoder must be available on `PATH` for MP4 export. Neither Java nor ffmpeg is bundled in the ZIP release recipe.
 - GStreamer native paths are supplied through Java system properties, e.g. `gstreamer.library.path` and `gstreamer.plugin.path`.
 - Homebrew installs `ffmpeg` and `openjdk` automatically when using the tap formula.
 
@@ -175,12 +175,16 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 - The project remains a plain Java Processing application rather than a `.pde`-only sketch.
 - Pure logic should stay extracted where practical so it can be tested without launching Processing.
-- Distribution relies on self-contained release bundles plus a Homebrew formula for supported platforms.
+- Historical distribution uses platform ZIPs plus a Homebrew formula. ZIPs require external Java and ffmpeg; native acceptance and redistribution clearance remain separate gates.
 
-## Supported-build distribution layer
+## Internal packaging/evaluation audit
 
-- `scripts/package_supported_build.py` stages the three release ZIPs for internal provenance/checksum use only via `--internal-provenance-only`, without modifying the free release artefacts. Paid redistribution remains held.
-- The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
-- No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
+- `scripts/package_supported_build.py` requires `--internal-provenance-only`, a complete matching checkout and a new destination strictly inside `dist/`. It never recursively deletes or replaces an existing destination. Concurrent destination claims, symlinks, untracked/archive-extra payloads, path traversal, duplicate paths, payload mismatches and malformed class JARs are refused. Failed copies remain partial and cannot be reused as success.
+- Schema 2 records `stagingCheckoutCommit`; `archiveSourceCommit` remains null/unverified. It no longer misrepresents local HEAD or a requested version label as archive build provenance. The app JAR receives structural checks only; native acceptance and redistribution clearance remain unestablished.
+- Portable launchers now forward CLI/smoke arguments unchanged. Stub process tests verify literal paths/presets with spaces and non-zero exit propagation; they do not exercise Java/GStreamer/GPU startup.
+- README states Java 21, desktop/AWT and external libx264-capable ffmpeg requirements. `docs/LOCAL-EVALUATION.md` covers load, effects, compare, preview, safe full/live export, finding output, discard, overwrite refusal and repeat loading with synthetic media only.
+- `docs/REDISTRIBUTION-AUDIT.md` now inventories native trees, exact recipe scope, media/owner decisions and official upstream licensing sources. No new project licence is chosen, and inherited binaries/notices remain unchanged.
+- Local verification for this audit: 38 Python tests ran, 36 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Exact-head CI and independent review remain required. No release artifact, installer or external upload was produced.
+- Existing release asset names, publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. Their runtime/rights gaps are documented, not declared solved by these tests.
 
-Last updated: 2026-10-06 17:24
+Last updated: 2026-10-06 22:47

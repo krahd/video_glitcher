@@ -10,7 +10,9 @@ Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_gli
 
 Current version: `v1.1.3`
 
-The repository is self-contained and includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows. Export uses `ffmpeg` from your system `PATH`.
+The repository includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows. Java and `ffmpeg` are external prerequisites; they are not included in the release ZIPs. Export uses system `ffmpeg` with the `libx264` encoder.
+
+The current draft candidate is for local evaluation only. Existing v1.1.3 downloads do not include its workflow repairs. See the [local evaluation checklist](docs/LOCAL-EVALUATION.md) for first-session steps and platform gates; current binaries remain [uncleared for paid redistribution](docs/REDISTRIBUTION-AUDIT.md).
 
 ## Install
 
@@ -56,10 +58,10 @@ For version-pinned downloads and release-specific details, open the release page
 
 ## Requirements
 
-- Java 17 or newer
-- VS Code with Java support
+- Java 21 with desktop/AWT support for the current build/release recipe (JDK 21 for source compilation). Older runtime compatibility is not established.
+- VS Code with Java support is optional; terminal build/run commands are available.
 - Homebrew installs `ffmpeg` and `openjdk` automatically when you use `brew tap krahd/tap && brew install krahd/tap/video_glitcher`
-- `ffmpeg` on your `PATH` if you want MP4 export
+- `ffmpeg` on your `PATH`, built with `libx264`, for MP4 export
 - Native video runtime files are already vendored for `macos-aarch64`, `macos-x86_64`, `linux-amd64`, and `windows-amd64`
 
 ## Build
@@ -179,7 +181,7 @@ These create release archives in `dist/` for each platform, for example:
 
 Each bundle contains the application jar, the required libraries, the platform-specific video natives, and the matching launcher script.
 
-For a supported paid distribution without changing the free GitHub releases, see [Supported builds](docs/SUPPORTED_BUILD.md).
+The current archives are not cleared for paid distribution. The [internal packaging inspection](docs/SUPPORTED_BUILD.md) leaves free release and Homebrew workflows unchanged.
 
 ### Debug launch
 
@@ -212,7 +214,7 @@ Both `E` (live performance) and `P` (full clip) now ask for an output destinatio
 
 Output remains **silent H.264 MP4 at 24 fps, at the preview canvas size including black mattes**. It is not source-resolution export. Full-clip mode follows real-time playback and can skip source frames under load; it is not a frame-accurate offline renderer. Effects are random, so it does not reproduce the exact random sequence seen during preview. These limits are shown in the in-app guide and remain product gates.
 
-Run the complete local checks (Java 17+ with compiler, Python 3, ffmpeg and ffprobe):
+Run the complete local checks (JDK 21, Python 3.11+, ffmpeg and ffprobe):
 
 ```sh
 bash scripts/check.sh --with-ffmpeg
