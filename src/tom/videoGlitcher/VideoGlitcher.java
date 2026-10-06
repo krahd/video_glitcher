@@ -79,6 +79,9 @@ public class VideoGlitcher extends PApplet {
     
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
+        // Bundled GStreamer libraries must not be loaded into GTK's native file chooser.
+        // Swing keeps Linux save/load dialogs in the Java UI without that native ABI collision.
+        if (PApplet.platform == LINUX) useNativeSelect = false;
         if (launchOptions.smokeTest()) {
             PApplet.main(new String[] { VideoGlitcher.class.getName() });
             return;
@@ -196,6 +199,7 @@ public class VideoGlitcher extends PApplet {
     private String statusMessage = "Status: no video loaded";
     
     private boolean triedVideoUriFallback = false;
+    private long videoLoadStartedNanos;
     private boolean smokeExportStarted = false;
     private int smokeExportFramesSaved = 0;
     
@@ -260,6 +264,7 @@ public class VideoGlitcher extends PApplet {
             updateMovieFrame(video);
         }
         
+        checkVideoLoadTimeout();
         normalizeRanges();
         liveRenderSettings = captureCurrentRenderSettings();
         updatePlaybackEffects();
@@ -447,9 +452,8 @@ public class VideoGlitcher extends PApplet {
     }
     
     public void movieEvent(Movie m) {
-        if (!paused) {
-            updateMovieFrame(m);
-        }
+        // draw() exclusively consumes available frames. Reading here as well races the
+        // GStreamer callback with Processing and can dispose a buffer while it is in use.
     }
     
     private void ensureMenuBarHidden() {
@@ -1298,6 +1302,7 @@ public class VideoGlitcher extends PApplet {
             releaseVideo();
             movieReady = false;
             
+            videoLoadStartedNanos = System.nanoTime();
             println("Loading video " + sourceLabel + ": " + source);
             try {
                 video = new Movie(this, source);
@@ -1315,6 +1320,17 @@ public class VideoGlitcher extends PApplet {
             }
         }
         
+        private void checkVideoLoadTimeout() {
+            if (video != null && VideoGlitcherLogic.videoLoadTimedOut(videoLoadStartedNanos, System.nanoTime(), movieReady)) {
+                videoLoadStartedNanos = 0;
+                releaseVideo();
+                paused = false;
+                updatePausePlayButton();
+                setStatusMessage("Video did not decode within 15 seconds. Press L to retry another clip; check the native video runtime.");
+                if (launchOptions.smokeTest()) finishSmokeRun(false, "Smoke video decode timed out");
+            }
+        }
+
         private String makeExportFilename(String sourceName) {
             return VideoGlitcherLogic.makeExportFilename(sourceName);
         }

@@ -68,6 +68,10 @@ final class VideoGlitcherLogic {
         return new GlitchState(false, 0, remainingCalmFrames);
     }
 
+    static boolean videoLoadTimedOut(long startedNanos, long nowNanos, boolean ready) {
+        return !ready && startedNanos != 0 && nowNanos - startedNanos >= 15_000_000_000L;
+    }
+
     static String presetDescription(String name) {
         return switch (name) {
             case "Subtle" -> "Light digital interruptions with longer calm gaps";

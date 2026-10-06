@@ -211,7 +211,9 @@ public final class FfmpegVideoExporterTest {
     }
 
     private static byte[] run(String... command) throws Exception {
-        Process process = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+        ProcessBuilder builder = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.INHERIT);
+        FfmpegVideoExporter.configureEncoderEnvironment(builder.environment());
+        Process process = builder.start();
         byte[] output = process.getInputStream().readAllBytes();
         check(process.waitFor(30, TimeUnit.SECONDS) && process.exitValue() == 0, "Command failed: " + Arrays.toString(command));
         return output;

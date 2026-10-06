@@ -220,7 +220,7 @@ bash scripts/check.sh --with-ffmpeg
 
 The real-encoder regression suite decodes generated output and checks colour, odd-dimension cropping, H.264 codec, 24 fps, frame count, duration, paths with spaces/Unicode, source/existing-file protection, concurrent destination creation, cancellation/retry, missing encoder/folder, invalid frames, empty exports, failed encoders and bounded finalisation, including a live non-reading encoder that fills the input pipe. It does not substitute for Processing/GStreamer GUI tests. CI runs build/logic/packaging checks on Linux, macOS and Windows and real encoder tests on Linux; it does not publish a release.
 
-For a built Linux source checkout, run `bash scripts/run-linux.sh` (accepts the existing CLI/smoke flags).
+For a built Linux source checkout, run `bash scripts/run-linux.sh` (accepts existing CLI/smoke flags; requires Python 3). It validates/materialises imported runtime links in a temporary tree and preflights dependencies without changing system libraries. The existing bundle requires `libffi.so.7`, which is absent on some current distributions; the launcher then fails with a specific message. Use a compatible, provenance-reviewed runtime rather than aliasing an incompatible ABI. `VIDEO_GLITCHER_NATIVE_DIR` can point to a separately prepared runtime. The native-runtime and redistribution gates remain open; see the candidate report.
 
 See [candidate validation and remaining product gates](docs/PRODUCT-CANDIDATE-2026-10-06.md). The [paid redistribution hold](docs/REDISTRIBUTION-AUDIT.md) remains in force.
 

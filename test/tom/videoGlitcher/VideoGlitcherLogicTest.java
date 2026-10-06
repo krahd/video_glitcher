@@ -22,6 +22,8 @@ public final class VideoGlitcherLogicTest {
         testPresetValues();
         testUnknownPresetReturnsNull();
         testPresetDescriptions();
+        testVideoDecodeTimeout();
+        testEncoderRuntimeIsolation();
 
         System.out.println("All VideoGlitcherLogic tests passed.");
     }
@@ -164,6 +166,28 @@ public final class VideoGlitcherLogicTest {
         assertTrue(oldDigicam.useVerticalSmear(), "Old Digicam should enable vertical smear");
         assertTrue(oldDigicam.useColumnDrift(), "Old Digicam should enable column drift");
         assertFalse(oldDigicam.useHeadSwitchBand(), "Old Digicam should not enable VHS head-switch banding");
+    }
+
+    private static void testEncoderRuntimeIsolation() {
+        java.util.Map<String, String> env = new java.util.HashMap<>();
+        env.put("LD_LIBRARY_PATH", "/bundled/video");
+        env.put("VIDEO_GLITCHER_FFMPEG_LD_LIBRARY_PATH", "/user/custom");
+        FfmpegVideoExporter.configureEncoderEnvironment(env);
+        assertEquals("/user/custom", env.get("LD_LIBRARY_PATH"));
+        assertFalse(env.containsKey("VIDEO_GLITCHER_FFMPEG_LD_LIBRARY_PATH"), "Private runtime marker must not leak into encoder");
+        env.put("VIDEO_GLITCHER_FFMPEG_LD_LIBRARY_PATH", "");
+        FfmpegVideoExporter.configureEncoderEnvironment(env);
+        assertFalse(env.containsKey("LD_LIBRARY_PATH"), "An originally unset path must remain unset for ffmpeg");
+        env.put("LD_LIBRARY_PATH", "/ordinary/environment");
+        FfmpegVideoExporter.configureEncoderEnvironment(env);
+        assertEquals("/ordinary/environment", env.get("LD_LIBRARY_PATH"));
+    }
+
+    private static void testVideoDecodeTimeout() {
+        assertFalse(VideoGlitcherLogic.videoLoadTimedOut(0, 99_000_000_000L, false), "No load is not a timeout");
+        assertFalse(VideoGlitcherLogic.videoLoadTimedOut(10, 14_000_000_010L, false), "Decoder gets a bounded load window");
+        assertTrue(VideoGlitcherLogic.videoLoadTimedOut(10, 15_000_000_010L, false), "A stalled decoder must become retryable");
+        assertFalse(VideoGlitcherLogic.videoLoadTimedOut(10, 99_000_000_000L, true), "A ready clip must not time out");
     }
 
     private static void testPresetDescriptions() {

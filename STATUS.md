@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 16:10
+Last updated: 2026-10-06 16:27
 
 ## Project purpose
 
@@ -121,6 +121,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 - Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
 - Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus no-replace hard-link publication protects previous outputs and source files, including a destination created during encoding.
 - Added discard/cancel (`X`), frame counts, bounded encoder diagnostics/finalisation, actionable errors and normal-exit cleanup.
+- Added isolated Linux library-link materialisation with safety/payload-hash validation and dependency preflight. No vendored payloads, system libraries or redistribution clearance are changed. Linux uses Swing pickers; ffmpeg receives the original loader environment.
 - Fixed HUD contrast and the documented `U` preview shortcut; added real decoded-output and failure regression tests plus non-publishing CI.
 
 - README currently documents version `v1.1.3`.
@@ -142,7 +143,7 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - Paid binary redistribution remains blocked by the codec/runtime provenance hold in `docs/REDISTRIBUTION-AUDIT.md`; project-level licence clarification remains separate. Existing rights/notices are unchanged.
 - Full-process capture remains real-time, random and preview-canvas-sized at 24 fps without audio; it is not frame-accurate/source-resolution offline export.
 - Native Linux generated-clip playback failed. The bundle contains 155 small library-link placeholder files; examples `libgstreamer-1.0.so` and `libharfbuzz.so.0` are Git mode 100644 text rather than symlinks. See the candidate report for loader diagnostics. No untested LD_LIBRARY_PATH workaround was committed.
-- A first-frame timeout/actionable decoder-error state remains needed: native decoder failure can leave the UI showing loading indefinitely. Full native export-dialog/video checks and all macOS/Windows interaction checks remain pending.
+- A 15-second first-frame decode timeout is now implemented. Isolated runtime link repair enabled generated-H.264 playback with a temporary official libffi7 compatibility package. The default Debian 13 host lacks libffi.so.7; a reviewed compatible runtime remains a delivery gate. Linux Swing picker and scoped ffmpeg environment fixes await final native export-dialog QA; all macOS/Windows native interaction checks remain pending.
 - Encoder writes/close and finalisation now run off the UI thread behind a bounded queue/deadline. Queue overload fails explicitly. Publication requires hard-link-capable storage; unresponsive filesystem operations can still delay background save completion.
 
 - Runtime video playback depends on bundled platform-specific Processing video/GStreamer native files.
@@ -181,4 +182,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 16:10
+Last updated: 2026-10-06 16:27

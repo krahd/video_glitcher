@@ -43,5 +43,7 @@ jobs:
           python-version: '3.12'
       - name: Install encoder for disposable regression fixtures
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Validate imported Linux library links without changing vendored payloads
+        run: python3 scripts/materialize_linux_runtime.py --destination dist/runtime-ci
       - name: Verify real output, no-clobber, cancellation and failures
         run: bash scripts/check.sh --with-ffmpeg

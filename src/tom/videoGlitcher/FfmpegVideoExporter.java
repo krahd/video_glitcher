@@ -69,11 +69,21 @@ final class FfmpegVideoExporter {
         Path temporary = Files.createTempFile(output.getParent(), ".video-glitcher-", ".part.mp4");
         try {
             ProcessBuilder builder = new ProcessBuilder(buildCommand(binary, spec.exportWidth(), spec.exportHeight(), fps, temporary.toString()));
+            configureEncoderEnvironment(builder.environment());
             builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
             return new FfmpegVideoExporter(builder.start(), spec, output, temporary);
         } catch (IOException | RuntimeException exception) {
             Files.deleteIfExists(temporary);
             throw new IOException("Cannot start ffmpeg. Check it is installed on PATH and the output folder is writable. " + exception.getMessage(), exception);
+        }
+    }
+
+    static void configureEncoderEnvironment(java.util.Map<String, String> environment) {
+        // The Java video runtime may need older bundled libraries; never leak that override into system ffmpeg.
+        String original = environment.remove("VIDEO_GLITCHER_FFMPEG_LD_LIBRARY_PATH");
+        if (original != null) {
+            if (original.isEmpty()) environment.remove("LD_LIBRARY_PATH");
+            else environment.put("LD_LIBRARY_PATH", original);
         }
     }
 
