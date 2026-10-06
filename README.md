@@ -208,7 +208,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 
 Press `?` in the app for a short preset and workflow guide. Start with `Subtle` or `Cinematic`, or choose `VHS Decay` for tracking/colour drift and `Old Digicam` for smear/column drift. Choosing a preset shows its description in the status bar. Hold `C` to compare the source without changing your settings or the recorded output.
 
-Both `E` (live performance) and `P` (full clip) now ask for an output destination. Choose a **new filename**: the app refuses to replace existing files, including the source and previous exports. Encoding happens in a temporary file in the selected folder. A successful finish saves the MP4; failures and `X` cancellation discard the temporary output. `E` / `Stop Output` still finalises the frames recorded so far, so use `X` when you want to discard them instead. The status bar reports failures with the encoder diagnostic and shows the saved destination on success.
+Both `E` (live performance) and `P` (full clip) now ask for an output destination. Choose a **new filename**: the app refuses to replace existing files, including the source and previous exports. Encoding happens in a temporary file in the selected folder. A successful background finish saves the MP4; failures and `X` cancellation discard the temporary output. Choose a local output drive with hard-link support; unsupported destinations fail without replacing files. Cancellation remains available until the final publication operation begins. `E` / `Stop Output` still finalises the frames recorded so far, so use `X` when you want to discard them instead. The status bar reports failures with the encoder diagnostic and shows the saved destination on success.
 
 Output remains **silent H.264 MP4 at 24 fps, at the preview canvas size including black mattes**. It is not source-resolution export. Full-clip mode follows real-time playback and can skip source frames under load; it is not a frame-accurate offline renderer. Effects are random, so it does not reproduce the exact random sequence seen during preview. These limits are shown in the in-app guide and remain product gates.
 
@@ -218,7 +218,9 @@ Run the complete local checks (Java 17+ with compiler, Python 3, ffmpeg and ffpr
 bash scripts/check.sh --with-ffmpeg
 ```
 
-The real-encoder regression suite decodes generated output and checks colour, odd-dimension cropping, H.264 codec, 24 fps, frame count, duration, paths with spaces/Unicode, source/existing-file protection, concurrent destination creation, cancellation/retry, missing encoder/folder, invalid frames, empty exports, failed encoders and bounded finalisation. It does not substitute for Processing/GStreamer GUI tests. CI runs build/logic/packaging checks on Linux, macOS and Windows and real encoder tests on Linux; it does not publish a release.
+The real-encoder regression suite decodes generated output and checks colour, odd-dimension cropping, H.264 codec, 24 fps, frame count, duration, paths with spaces/Unicode, source/existing-file protection, concurrent destination creation, cancellation/retry, missing encoder/folder, invalid frames, empty exports, failed encoders and bounded finalisation, including a live non-reading encoder that fills the input pipe. It does not substitute for Processing/GStreamer GUI tests. CI runs build/logic/packaging checks on Linux, macOS and Windows and real encoder tests on Linux; it does not publish a release.
+
+For a built Linux source checkout, run `bash scripts/run-linux.sh` (accepts the existing CLI/smoke flags).
 
 See [candidate validation and remaining product gates](docs/PRODUCT-CANDIDATE-2026-10-06.md). The [paid redistribution hold](docs/REDISTRIBUTION-AUDIT.md) remains in force.
 

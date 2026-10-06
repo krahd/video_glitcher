@@ -23,6 +23,7 @@ public final class FfmpegVideoExporterTest {
             if (!System.getProperty("os.name").startsWith("Windows")) {
                 testEncoderFailure(directory);
                 testEncoderTimeout(directory);
+                testNonReadingEncoder(directory);
                 testSymlinkDestination(directory);
             }
             assertNoStagingFiles(directory);
@@ -42,7 +43,7 @@ public final class FfmpegVideoExporterTest {
         // Green odd-width/height borders must be cropped, not leak through a wrong row stride.
         for (int y = 0; y < 49; y++) frame[y * 65 + 64] = 0xff00ff00;
         Arrays.fill(frame, 48 * 65, frame.length, 0xff00ff00);
-        for (int i = 0; i < 24; i++) exporter.writeFrame(frame);
+        for (int i = 0; i < 24; i++) { exporter.writeFrame(frame); Thread.sleep(42); }
         check(!Files.exists(output), "Destination must not exist before finish");
         exporter.finish();
         check(Files.size(output) > 0, "Output must not be empty");
@@ -88,6 +89,7 @@ public final class FfmpegVideoExporterTest {
         exporter.writeFrame(new int[16]);
         exporter.abort();
         exporter.abort();
+        check(exporter.awaitCleanup(10, TimeUnit.SECONDS), "Cancellation cleanup must finish");
         check(!Files.exists(output), "Cancel must not publish output");
         assertNoStagingFiles(directory);
         exporter = FfmpegVideoExporter.start(output.toString(), 4, 4, 24);
@@ -101,6 +103,7 @@ public final class FfmpegVideoExporterTest {
         expectIOException(() -> exporter.writeFrame(new int[1]), "Short frame must fail descriptively");
         expectIOException(() -> exporter.writeFrame(null), "Null frame must fail descriptively");
         exporter.abort();
+        check(exporter.awaitCleanup(10, TimeUnit.SECONDS), "Invalid-frame cleanup must finish");
         for (int[] dimensions : new int[][]{{0, 4}, {4, 1}, {Integer.MAX_VALUE, 4}}) {
             try { FfmpegVideoExporter.frameSpecFor(dimensions[0], dimensions[1]); throw new AssertionError("Invalid dimensions accepted"); }
             catch (IllegalArgumentException expected) { checks++; }
@@ -145,6 +148,36 @@ public final class FfmpegVideoExporterTest {
         expectIOException(() -> exporter.finish(100, TimeUnit.MILLISECONDS), "Stalled encoder must time out");
         check(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - started) < 10, "Timeout must be bounded");
         check(!Files.exists(output), "Timeout must not publish");
+    }
+
+    private static void testNonReadingEncoder(Path directory) throws Exception {
+        Path binary = directory.resolve("non-reading-encoder.sh");
+        Files.writeString(binary, "#!/bin/sh\nexec sleep 60\n");
+        check(binary.toFile().setExecutable(true), "Non-reading test encoder executable");
+        Path output = directory.resolve("blocked-pipe.mp4");
+        FfmpegVideoExporter exporter = FfmpegVideoExporter.start(binary.toString(), output.toString(), 640, 360, 24);
+        int[] frame = new int[640 * 360];
+        long started = System.nanoTime();
+        exporter.writeFrame(frame); // Far larger than a pipe buffer; must not block this caller.
+        check(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 1000, "Render thread must not wait for a blocked pipe");
+        boolean overflow = false;
+        for (int i = 0; i < 10; i++) {
+            try { exporter.writeFrame(frame); } catch (IOException expected) { overflow = true; break; }
+        }
+        check(overflow, "Bounded queue must fail rather than silently drop frames or grow indefinitely");
+        started = System.nanoTime();
+        check(exporter.abort(), "Blocked write must be cancellable");
+        check(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 1000, "Cancel must return promptly");
+        check(exporter.awaitCleanup(10, TimeUnit.SECONDS), "Blocked writer/process must terminate");
+        check(!Files.exists(output), "Blocked export must not publish");
+        assertNoStagingFiles(directory);
+        exporter = FfmpegVideoExporter.start(binary.toString(), output.toString(), 640, 360, 24);
+        exporter.writeFrame(frame);
+        FfmpegVideoExporter finishing = exporter;
+        started = System.nanoTime();
+        expectIOException(() -> finishing.finish(100, TimeUnit.MILLISECONDS), "Deadline must include pipe write/close, not just process wait");
+        check(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - started) < 10, "Blocked-pipe finish must terminate");
+        assertNoStagingFiles(directory);
     }
 
     private static void testSymlinkDestination(Path directory) throws Exception {

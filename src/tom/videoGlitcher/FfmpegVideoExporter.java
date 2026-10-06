@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -24,7 +26,13 @@ final class FfmpegVideoExporter {
     private final StringBuilder diagnostics = new StringBuilder();
     private final Thread diagnosticReader;
     private long framesWritten;
-    private boolean closed;
+    private enum State { OPEN, FINISHING, PUBLISHING, FINISHED, ABORTED }
+    private final AtomicReference<State> state = new AtomicReference<>(State.OPEN);
+    private final ArrayBlockingQueue<byte[]> pendingFrames = new ArrayBlockingQueue<>(4);
+    private final CountDownLatch writerStopped = new CountDownLatch(1);
+    private final CountDownLatch cleanupFinished = new CountDownLatch(1);
+    private volatile IOException writerFailure;
+    private final Thread frameWriter;
 
     private FfmpegVideoExporter(Process process, FrameSpec frameSpec, Path outputPath, Path temporaryPath) {
         this.process = process;
@@ -36,6 +44,9 @@ final class FfmpegVideoExporter {
         diagnosticReader = new Thread(() -> readDiagnostics(process.getErrorStream()), "ffmpeg-diagnostics");
         diagnosticReader.setDaemon(true);
         diagnosticReader.start();
+        frameWriter = new Thread(this::writeQueuedFrames, "ffmpeg-frame-writer");
+        frameWriter.setDaemon(true);
+        frameWriter.start();
     }
 
     static FfmpegVideoExporter start(String outputFilename, int sourceWidth, int sourceHeight, int fps) throws IOException {
@@ -87,7 +98,8 @@ final class FfmpegVideoExporter {
     }
 
     void writeFrame(int[] argbPixels) throws IOException {
-        if (closed) throw new IOException("This export is already closed. Start a new export.");
+        if (state.get() != State.OPEN) throw new IOException("This export is already closing. Start a new export.");
+        if (writerFailure != null) throw writerFailure;
         if (argbPixels == null || argbPixels.length < (long) frameSpec.sourceWidth() * frameSpec.sourceHeight()) {
             throw new IOException("Incomplete video frame; export stopped safely.");
         }
@@ -101,11 +113,28 @@ final class FfmpegVideoExporter {
                 frameBuffer[index++] = (byte) pixel;
             }
         }
+        // Never wait for ffmpeg on the Processing/UI thread. A bounded queue prevents unlimited memory use.
+        if (!pendingFrames.offer(frameBuffer.clone())) {
+            throw new IOException("Encoder cannot keep up; export stopped without dropping frames. Try a smaller preview canvas or a faster local drive.");
+        }
+        framesWritten++;
+    }
+
+    private void writeQueuedFrames() {
         try {
-            stdin.write(frameBuffer);
-            framesWritten++;
+            while (state.get() != State.ABORTED) {
+                byte[] frame = pendingFrames.poll(25, TimeUnit.MILLISECONDS);
+                if (frame != null) stdin.write(frame);
+                else if (state.get() == State.FINISHING) break;
+            }
+            stdin.close();
         } catch (IOException exception) {
-            throw new IOException("Encoder stopped while writing. Check free disk space and ffmpeg. " + diagnosticSummary(), exception);
+            writerFailure = new IOException("Encoder stopped while writing. Check free disk space and ffmpeg. " + diagnosticSummary(), exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            writerFailure = new IOException("Encoder frame writer interrupted", exception);
+        } finally {
+            writerStopped.countDown();
         }
     }
 
@@ -114,45 +143,74 @@ final class FfmpegVideoExporter {
     }
 
     void finish(long timeout, TimeUnit unit) throws IOException, InterruptedException {
-        if (closed) throw new IOException("This export is already closed.");
+        if (!state.compareAndSet(State.OPEN, State.FINISHING)) throw new IOException("This export is already closing.");
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
         try {
-            stdin.close();
-            if (!process.waitFor(timeout, unit)) throw new IOException("ffmpeg did not finish in time. Retry a shorter export or check the output drive.");
+            // Includes pipe writes AND stdin.close, not merely the process exit wait.
+            if (!writerStopped.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)
+                    || !process.waitFor(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)) {
+                throw new IOException("ffmpeg did not finish in time. Retry a shorter export or check the output drive.");
+            }
             diagnosticReader.join(1000);
             if (process.exitValue() != 0) throw new IOException("ffmpeg failed (" + process.exitValue() + "). " + diagnosticSummary());
+            if (writerFailure != null) throw writerFailure;
             if (framesWritten == 0 || Files.size(temporaryPath) == 0) throw new IOException("No video frames were saved. Play the clip and try again.");
+            if (!state.compareAndSet(State.FINISHING, State.PUBLISHING)) throw new IOException("Export cancelled.");
             publishWithoutReplacing();
-            closed = true;
+            state.set(State.FINISHED);
         } finally {
-            if (!closed) abort();
-            else Files.deleteIfExists(temporaryPath);
+            if (state.get() != State.FINISHED) {
+                state.set(State.ABORTED);
+                cleanUp(); // finish runs off the UI thread; cleanup remains bounded for ordinary processes.
+            } else {
+                try { Files.deleteIfExists(temporaryPath); } catch (IOException exception) {
+                    synchronized (diagnostics) { diagnostics.append(" Temporary file cleanup failed: ").append(temporaryPath); }
+                }
+                cleanupFinished.countDown();
+            }
         }
     }
 
     private void publishWithoutReplacing() throws IOException {
-        // CREATE_NEW provides a no-clobber guarantee even if another app creates the destination during encoding.
-        // Copy rather than rename: a provider's check-then-rename may replace a file in that race.
-        boolean created = false;
-        try (OutputStream destination = Files.newOutputStream(outputPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-            created = true;
-            Files.copy(temporaryPath, destination);
-        } catch (IOException exception) {
-            if (created) Files.deleteIfExists(outputPath);
-            throw new IOException("Could not save export. Choose a new filename and check free disk space. " + exception.getMessage(), exception);
+        // Same-directory hard-link creation is a single, no-replace publication operation.
+        // Never remove the destination on failure: another process may own or replace that path.
+        try {
+            Files.createLink(outputPath, temporaryPath);
+        } catch (IOException | UnsupportedOperationException exception) {
+            throw new IOException("Could not save export safely. Choose a NEW filename on a local drive supporting hard links. " + exception.getMessage(), exception);
         }
     }
 
-    void abort() {
-        if (closed) return;
-        closed = true;
+    /** Non-blocking cancellation. False means publication has already committed or started. */
+    boolean abort() {
+        State current;
+        do {
+            current = state.get();
+            if (current == State.ABORTED) return true;
+            if (current == State.FINISHED || current == State.PUBLISHING) return false;
+        } while (!state.compareAndSet(current, State.ABORTED));
+        Thread cleanup = new Thread(this::cleanUp, "ffmpeg-cancel-cleanup");
+        // Non-daemon: normal JVM shutdown gives cancellation its bounded cleanup opportunity.
+        cleanup.start();
+        return true;
+    }
+
+    private void cleanUp() {
+        pendingFrames.clear();
         process.destroyForcibly();
-        try { stdin.close(); } catch (IOException ignored) { }
+        frameWriter.interrupt();
         try {
             process.waitFor(5, TimeUnit.SECONDS);
+            writerStopped.await(5, TimeUnit.SECONDS);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }
         try { Files.deleteIfExists(temporaryPath); } catch (IOException ignored) { }
+        cleanupFinished.countDown();
+    }
+
+    boolean awaitCleanup(long timeout, TimeUnit unit) throws InterruptedException {
+        return cleanupFinished.await(timeout, unit);
     }
 
     long framesWritten() { return framesWritten; }

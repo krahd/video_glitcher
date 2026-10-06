@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 15:36
+Last updated: 2026-10-06 15:46
 
 ## Project purpose
 
@@ -119,7 +119,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 ## Recent changes
 
 - Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
-- Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus `CREATE_NEW` publication protects previous outputs and source files, including a destination created during encoding.
+- Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus no-replace hard-link publication protects previous outputs and source files, including a destination created during encoding.
 - Added discard/cancel (`X`), frame counts, bounded encoder diagnostics/finalisation, actionable errors and normal-exit cleanup.
 - Fixed HUD contrast and the documented `U` preview shortcut; added real decoded-output and failure regression tests plus non-publishing CI.
 
@@ -133,7 +133,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 Automated coverage targets pure Java logic extracted from the fullscreen Processing sketch, including export filename generation, video-fit calculations, range normalisation, glitch state transitions, and ffmpeg export setup.
 
-On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 46 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. GUI/native runtime acceptance is not established by these tests.
+On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 59 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. GUI/native runtime acceptance is not established by these tests.
 
 Manual/runtime validation remains important because fullscreen Processing behaviour, native video library compatibility, GUI interaction, and ffmpeg export depend on the local platform/runtime environment.
 
@@ -142,7 +142,7 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - Paid binary redistribution remains blocked by the codec/runtime provenance hold in `docs/REDISTRIBUTION-AUDIT.md`; project-level licence clarification remains separate. Existing rights/notices are unchanged.
 - Full-process capture remains real-time, random and preview-canvas-sized at 24 fps without audio; it is not frame-accurate/source-resolution offline export.
 - Normal-launch GUI screenshots and interaction testing of the new guide/export workflow remain pending, as do supported-platform native video checks.
-- Encoder frame writes and the final file copy remain synchronous; finalisation wait is bounded but stalled-device I/O is not yet cancellable from another thread.
+- Encoder writes/close and finalisation now run off the UI thread behind a bounded queue/deadline. Queue overload fails explicitly. Publication requires hard-link-capable storage; unresponsive filesystem operations can still delay background save completion.
 
 - Runtime video playback depends on bundled platform-specific Processing video/GStreamer native files.
 - MP4 export depends on system `ffmpeg` availability.
@@ -180,4 +180,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 15:36
+Last updated: 2026-10-06 15:46
