@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 17:12
+Last updated: 2026-10-06 17:24
 
 ## Project purpose
 
@@ -119,7 +119,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 ## Recent changes
 
 - Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
-- Fixed repeated loading after a manual pause or completed full export: only an accepted clip that begins loading resets pause/frame/readiness state. Cancelling selection keeps the previous paused clip unchanged. Both paths have workflow regressions and passed native repeats at `f199d6b`, including picker cancellation preservation. A separately reproduced black pause snapshot now uses GPU texture readback; desktop regression/colour-bar acceptance for that new change is pending.
+- Fixed repeated loading after a manual pause or completed full export: only an accepted clip that begins loading resets pause/frame/readiness state. Cancelling selection keeps the previous paused clip unchanged. Both paths have workflow regressions and passed native repeats at `f199d6b`, including picker cancellation preservation. A separately reproduced black pause snapshot now uses GPU texture readback. Desktop GPU regression and actual colour-bar pause/end/freeze/cancel/reload checks passed at `eb7ea12`.
 - Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus no-replace hard-link publication protects previous outputs and source files, including a destination created during encoding.
 - Added discard/cancel (`X`), frame counts, bounded encoder diagnostics/finalisation, actionable errors and normal-exit cleanup.
 - Added isolated Linux library-link materialisation with safety/payload-hash validation and dependency preflight. No vendored payloads, system libraries or redistribution clearance are changed. Linux uses Swing pickers; ffmpeg receives the original loader environment.
@@ -161,7 +161,7 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 ## Next steps
 
-1. Review the runtime-isolation/startup-buffer delta and verify final-head CI. The earlier export/workflow review passed at `83d9cd5`; the latest push CI exposed encoder-startup queue sensitivity, fixed with bounded byte-budgeted buffering and a slow-start regression.
+1. Independently recheck the repeated-load and GPU snapshot repairs and verify final-head CI. Build/logic/packaging/encoder/workflow CI is green at `eb7ea12`; desktop GPU and focused native checks also passed there. Subsequent changes only update this evidence and move the GPU test's noSmooth setting to the supported settings() hook.
 2. Test normal-launch GUI interactions and native load/live/full-process exports on each supported desktop.
 3. Resolve redistribution/project-licence gates and establish editor-valued workflow benefit before any paid offer. No release or store upload is authorised in this work.
 
@@ -183,4 +183,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 17:12
+Last updated: 2026-10-06 17:24

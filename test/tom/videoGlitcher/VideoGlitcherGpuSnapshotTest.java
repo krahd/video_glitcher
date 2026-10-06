@@ -10,7 +10,7 @@ public final class VideoGlitcherGpuSnapshotTest extends PApplet {
     private PImage source;
     private int[] expected;
     public static void main(String[] args) { PApplet.main(VideoGlitcherGpuSnapshotTest.class.getName()); }
-    @Override public void settings() { size(320, 240, P2D); pixelDensity(1); }
+    @Override public void settings() { size(320, 240, P2D); pixelDensity(1); noSmooth(); }
     @Override public void setup() {
         source = createImage(16, 12, ARGB);
         for (int y = 0; y < source.height; y++) {
@@ -21,7 +21,6 @@ public final class VideoGlitcherGpuSnapshotTest extends PApplet {
         }
         source.updatePixels();
         expected = source.pixels.clone();
-        noSmooth();
     }
     @Override public void draw() {
         image(source, 0, 0, width, height);
