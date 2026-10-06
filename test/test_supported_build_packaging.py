@@ -399,7 +399,7 @@ class SupportedBuildPackagingTests(unittest.TestCase):
     def test_selected_checkout_root_alias_accepts_lexical_and_canonical_parent(self):
         alias = self.root / "checkout-alias"
         alias.symlink_to(self.repo, target_is_directory=True)
-        for output in (alias / "dist/alias-output", self.repo / "dist/canonical-output"):
+        for output in (alias / "dist/alias-output", self.repo.resolve() / "dist/canonical-output"):
             with self.subTest(output=output):
                 result = module.stage_supported_build(alias, self.source, output, "fixture", internal_provenance_only=True)
                 self.assertEqual(result["redistributionClearance"], "not-cleared")
