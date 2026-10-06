@@ -32,6 +32,7 @@ public final class VideoGlitcherWorkflowTest {
         drainPickerActions(app);
         check(!(boolean) get(app, "selectingInteractiveOutput"), "Live cancel must clear");
 
+        testManualFreezeUsesPreGuiFrame();
         Path directory = Files.createTempDirectory("video-glitcher-workflow-");
         try {
             testSmokeTimeout(directory);
@@ -68,6 +69,21 @@ public final class VideoGlitcherWorkflowTest {
         }
         System.out.println("All VideoGlitcher workflow state tests passed.");
     }
+    private static void testManualFreezeUsesPreGuiFrame() throws Exception {
+        VideoGlitcher app = new VideoGlitcher();
+        processing.core.PImage preGui = new processing.core.PImage(4, 4);
+        java.util.Arrays.fill(preGui.pixels, 0xff112233);
+        preGui.pixels[5] = 0xffff0000; preGui.pixels[6] = 0xff00ff00;
+        preGui.pixels[9] = 0xff0000ff; preGui.pixels[10] = 0xffffffff;
+        set(app, "previousFrame", preGui); set(app, "movieReady", true);
+        set(app, "drawX", 1f); set(app, "drawY", 1f); set(app, "drawW", 2f); set(app, "drawH", 2f);
+        app.key = 'f'; app.keyPressed();
+        processing.core.PImage frozen = (processing.core.PImage) get(app, "frozenFrame");
+        check(frozen.width == 2 && frozen.height == 2 && java.util.Arrays.equals(frozen.pixels,
+                new int[]{0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff}), "Manual freeze must crop the pre-GUI render, never the decorated screen");
+        app.keyPressed(); check(!(boolean) get(app, "freezeManual"), "Manual freeze toggle must release normally");
+    }
+
     private static void testLoadAfterPauseOrExport(Path directory, boolean afterExport) throws Exception {
         TestVideoGlitcher app = new TestVideoGlitcher();
         ReadyMovie old = readyMovie();

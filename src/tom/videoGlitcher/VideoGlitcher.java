@@ -4,6 +4,8 @@ import processing.core.*;
 import processing.data.IntList;
 import processing.event.MouseEvent;
 import processing.video.*;
+import processing.opengl.PGraphicsOpenGL;
+import processing.opengl.Texture;
 import controlP5.*;
 
 
@@ -361,8 +363,11 @@ public class VideoGlitcher extends PApplet {
             promptForVideo();
         } else if (key == 'f' || key == 'F') {
             freezeManual = !freezeManual;
-            if (freezeManual && frozenFrame == null && movieReady) {
-                frozenFrame = get((int) drawX, (int) drawY, max(1, (int) drawW), max(1, (int) drawH));
+            if (freezeManual && movieReady) {
+                // The last completed render was captured before the HUD/controls were drawn.
+                // Reading the displayed framebuffer here can accidentally freeze GUI pixels into exports.
+                frozenFrame = previousFrame == null ? snapshotSourceFrame(video)
+                        : previousFrame.get((int) drawX, (int) drawY, max(1, (int) drawW), max(1, (int) drawH));
             }
         } else if (key == 'h' || key == 'H') {
             showHUD = !showHUD;
@@ -477,7 +482,7 @@ public class VideoGlitcher extends PApplet {
             }
             
             if (paused) {
-                pausedFrame = movie.get();
+                pausedFrame = snapshotSourceFrame(movie);
                 movie.pause();
                 setStatusMessage("Status: paused " + currentVideoName);
                 updatePausePlayButton();
@@ -1163,7 +1168,7 @@ public class VideoGlitcher extends PApplet {
             
             video.jump(0);
             if (paused) {
-                pausedFrame = video.get();
+                pausedFrame = snapshotSourceFrame(video);
                 video.pause();
                 setStatusMessage("Status: rewound " + currentVideoName);
             } else {
@@ -1324,6 +1329,25 @@ public class VideoGlitcher extends PApplet {
             }
         }
         
+        // Read the displayed GPU texture, not Movie's transient native-buffer/CPU cache.
+        // Movie.get() can return black after Processing has consumed/disposed its buffer list.
+        static PImage snapshotTexture(PGraphicsOpenGL renderer, PImage source) {
+            if (source.width <= 0 || source.height <= 0) return null;
+            PImage snapshot = new PImage(source.width, source.height, ARGB);
+            Texture texture = renderer.getTexture(source);
+            texture.get(snapshot.pixels);
+            snapshot.updatePixels();
+            return snapshot;
+        }
+
+        private PImage snapshotSourceFrame(Movie source) {
+            if (source == null || source.width <= 0 || source.height <= 0) return null;
+            if (g instanceof PGraphicsOpenGL renderer) {
+                return snapshotTexture(renderer, source);
+            }
+            return source.get();
+        }
+
         // Narrow construction seam for state tests that do not launch a native video pipeline.
         Movie createMovie(String source) {
             return new Movie(this, source);
@@ -2483,12 +2507,14 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 private void togglePausePlay() {
-                    if (video == null)
+                    if (video == null) return;
+                    if (!movieReady) {
+                        setStatusMessage("Video is still loading; pause is available after its first frame.");
                         return;
-                    
+                    }
                     paused = !paused;
                     if (paused) {
-                        pausedFrame = video.get();
+                        pausedFrame = snapshotSourceFrame(video);
                         video.pause();
                         setStatusMessage("Status: paused " + currentVideoName);
                     } else {
@@ -2530,7 +2556,7 @@ public class VideoGlitcher extends PApplet {
                     }
                     
                     paused = true;
-                    pausedFrame = video.get();
+                    pausedFrame = snapshotSourceFrame(video);
                     updatePausePlayButton();
                     
                     if (exporting) {
