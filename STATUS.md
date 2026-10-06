@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-02 23:27
+Last updated: 2026-10-06 15:36
 
 ## Project purpose
 
@@ -27,7 +27,7 @@ The GUI includes compact/full modes, preset buttons, high-level digital/analogue
 
 ## Active focus
 
-Current focus is maintaining a reliable cross-platform Processing/video runtime, preserving release-bundle and Homebrew distribution workflows, keeping smoke tests useful for runtime/export validation, and ensuring real-time preview/export behaviour stays aligned with GUI settings.
+Current focus is the draft preview-to-export product candidate: safer new-file-only export, cancellation/recovery, source comparison and preset/workflow guidance. Release bundles and Homebrew remain unchanged. The paid redistribution hold remains in force; this is not a cleared or validated paid product. See `docs/PRODUCT-CANDIDATE-2026-10-06.md`.
 
 ## Architecture overview
 
@@ -118,6 +118,11 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 ## Recent changes
 
+- Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
+- Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus `CREATE_NEW` publication protects previous outputs and source files, including a destination created during encoding.
+- Added discard/cancel (`X`), frame counts, bounded encoder diagnostics/finalisation, actionable errors and normal-exit cleanup.
+- Fixed HUD contrast and the documented `U` preview shortcut; added real decoded-output and failure regression tests plus non-publishing CI.
+
 - README currently documents version `v1.1.3`.
 - Homebrew install path uses `krahd/tap` and formula name `video_glitcher`.
 - The Homebrew formula snapshot has been renamed to `Formula/video_glitcher.rb`.
@@ -128,11 +133,16 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 Automated coverage targets pure Java logic extracted from the fullscreen Processing sketch, including export filename generation, video-fit calculations, range normalisation, glitch state transitions, and ffmpeg export setup.
 
-No tests were run while creating this documentation-only status snapshot.
+On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 46 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. GUI/native runtime acceptance is not established by these tests.
 
 Manual/runtime validation remains important because fullscreen Processing behaviour, native video library compatibility, GUI interaction, and ffmpeg export depend on the local platform/runtime environment.
 
 ## Known issues, risks, and limitations
+
+- Paid binary redistribution remains blocked by the codec/runtime provenance hold in `docs/REDISTRIBUTION-AUDIT.md`; project-level licence clarification remains separate. Existing rights/notices are unchanged.
+- Full-process capture remains real-time, random and preview-canvas-sized at 24 fps without audio; it is not frame-accurate/source-resolution offline export.
+- Normal-launch GUI screenshots and interaction testing of the new guide/export workflow remain pending, as do supported-platform native video checks.
+- Encoder frame writes and the final file copy remain synchronous; finalisation wait is bounded but stalled-device I/O is not yet cancellable from another thread.
 
 - Runtime video playback depends on bundled platform-specific Processing video/GStreamer native files.
 - MP4 export depends on system `ffmpeg` availability.
@@ -148,9 +158,9 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 ## Next steps
 
-1. Run logic tests after the next source change.
-2. Run platform smoke tests before the next release.
-3. Verify Homebrew formula rendering and release asset names before tagging.
+1. Complete independent review and exact-head CI for the candidate draft PR.
+2. Test normal-launch GUI interactions and native load/live/full-process exports on each supported desktop.
+3. Resolve redistribution/project-licence gates and establish editor-valued workflow benefit before any paid offer. No release or store upload is authorised in this work.
 
 ## Longer-term steps
 
@@ -164,14 +174,10 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - Pure logic should stay extracted where practical so it can be tested without launching Processing.
 - Distribution relies on self-contained release bundles plus a Homebrew formula for supported platforms.
 
----
-
-Last updated: 2026-05-07 00:15
-
 ## Supported-build distribution layer
 
-- Added `scripts/package_supported_build.py` to stage the existing three release ZIPs into a paid-support delivery directory without renaming or modifying the free release artefacts.
+- `scripts/package_supported_build.py` stages the three release ZIPs for internal provenance/checksum use only via `--internal-provenance-only`, without modifying the free release artefacts. Paid redistribution remains held.
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-02 23:27
+Last updated: 2026-10-06 15:36

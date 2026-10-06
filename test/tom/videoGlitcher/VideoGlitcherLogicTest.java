@@ -21,6 +21,7 @@ public final class VideoGlitcherLogicTest {
         testFfmpegCommandIncludesExpectedArguments();
         testPresetValues();
         testUnknownPresetReturnsNull();
+        testPresetDescriptions();
 
         System.out.println("All VideoGlitcherLogic tests passed.");
     }
@@ -163,6 +164,13 @@ public final class VideoGlitcherLogicTest {
         assertTrue(oldDigicam.useVerticalSmear(), "Old Digicam should enable vertical smear");
         assertTrue(oldDigicam.useColumnDrift(), "Old Digicam should enable column drift");
         assertFalse(oldDigicam.useHeadSwitchBand(), "Old Digicam should not enable VHS head-switch banding");
+    }
+
+    private static void testPresetDescriptions() {
+        for (String name : new String[]{"Subtle", "Cinematic", "Corrupted File", "Broken Codec", "Extreme", "VHS Decay", "Old Digicam", "Random"}) {
+            assertFalse(VideoGlitcherLogic.presetDescription(name).equals("Custom effect settings"), "Every discoverable preset needs a description");
+        }
+        assertEquals("Custom effect settings", VideoGlitcherLogic.presetDescription("Custom"));
     }
 
     private static void testUnknownPresetReturnsNull() {
