@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 16:00
+Last updated: 2026-10-06 16:10
 
 ## Project purpose
 
@@ -133,7 +133,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 Automated coverage targets pure Java logic extracted from the fullscreen Processing sketch, including export filename generation, video-fit calculations, range normalisation, glitch state transitions, and ffmpeg export setup.
 
-On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 89 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. Workflow tests also cover native-picker handoff, asynchronous completion filenames, guide-time cancel and failing smoke timeouts. Initial normal-launch Linux screenshots verified guide open/close and U hide/show; the discovered compact-panel height fix awaits repeat visual validation. Full native video/runtime and macOS/Windows acceptance remain pending.
+On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 89 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. Workflow tests also cover native-picker handoff, asynchronous completion filenames, guide-time cancel and failing smoke timeouts. Normal-launch Linux screenshots at `83d9cd5` verified all four compact sliders, opaque guide, guide open/close, U hide/show and clean exit. Generated-H.264 playback failed due to the existing bundled native runtime; full native video/export and macOS/Windows acceptance remain pending. Independent review and exact-head CI at `83d9cd5` pass.
 
 Manual/runtime validation remains important because fullscreen Processing behaviour, native video library compatibility, GUI interaction, and ffmpeg export depend on the local platform/runtime environment.
 
@@ -141,7 +141,8 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 - Paid binary redistribution remains blocked by the codec/runtime provenance hold in `docs/REDISTRIBUTION-AUDIT.md`; project-level licence clarification remains separate. Existing rights/notices are unchanged.
 - Full-process capture remains real-time, random and preview-canvas-sized at 24 fps without audio; it is not frame-accurate/source-resolution offline export.
-- Normal-launch GUI screenshots and interaction testing of the new guide/export workflow remain pending, as do supported-platform native video checks.
+- Native Linux generated-clip playback failed. The bundle contains 155 small library-link placeholder files; examples `libgstreamer-1.0.so` and `libharfbuzz.so.0` are Git mode 100644 text rather than symlinks. See the candidate report for loader diagnostics. No untested LD_LIBRARY_PATH workaround was committed.
+- A first-frame timeout/actionable decoder-error state remains needed: native decoder failure can leave the UI showing loading indefinitely. Full native export-dialog/video checks and all macOS/Windows interaction checks remain pending.
 - Encoder writes/close and finalisation now run off the UI thread behind a bounded queue/deadline. Queue overload fails explicitly. Publication requires hard-link-capable storage; unresponsive filesystem operations can still delay background save completion.
 
 - Runtime video playback depends on bundled platform-specific Processing video/GStreamer native files.
@@ -180,4 +181,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 16:00
+Last updated: 2026-10-06 16:10
