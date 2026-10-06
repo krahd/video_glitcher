@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 16:27
+Last updated: 2026-10-06 16:36
 
 ## Project purpose
 
@@ -134,7 +134,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 Automated coverage targets pure Java logic extracted from the fullscreen Processing sketch, including export filename generation, video-fit calculations, range normalisation, glitch state transitions, and ffmpeg export setup.
 
-On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 89 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. Workflow tests also cover native-picker handoff, asynchronous completion filenames, guide-time cancel and failing smoke timeouts. Normal-launch Linux screenshots at `83d9cd5` verified all four compact sliders, opaque guide, guide open/close, U hide/show and clean exit. Generated-H.264 playback failed due to the existing bundled native runtime; full native video/export and macOS/Windows acceptance remain pending. Independent review and exact-head CI at `83d9cd5` pass.
+On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, 12 Python checks (packaging and Linux link safety) and 93 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. Workflow tests also cover native-picker handoff, asynchronous completion filenames, guide-time cancel and failing smoke timeouts. Normal-launch Linux screenshots at `83d9cd5` verified all four compact sliders, opaque guide, guide open/close, U hide/show and clean exit. The original Linux runtime failed playback; an isolated validated runtime subsequently passed generated-H.264 playback, full export, existing-output rejection and live cancellation at `b87671b`. This depended on a temporary graphical JRE and libffi7 compatibility package, not a shipped/cleared bundle. macOS/Windows native acceptance remains pending. Independent review and exact-head CI at `83d9cd5` pass.
 
 Manual/runtime validation remains important because fullscreen Processing behaviour, native video library compatibility, GUI interaction, and ffmpeg export depend on the local platform/runtime environment.
 
@@ -142,8 +142,8 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 - Paid binary redistribution remains blocked by the codec/runtime provenance hold in `docs/REDISTRIBUTION-AUDIT.md`; project-level licence clarification remains separate. Existing rights/notices are unchanged.
 - Full-process capture remains real-time, random and preview-canvas-sized at 24 fps without audio; it is not frame-accurate/source-resolution offline export.
-- Native Linux generated-clip playback failed. The bundle contains 155 small library-link placeholder files; examples `libgstreamer-1.0.so` and `libharfbuzz.so.0` are Git mode 100644 text rather than symlinks. See the candidate report for loader diagnostics. No untested LD_LIBRARY_PATH workaround was committed.
-- A 15-second first-frame decode timeout is now implemented. Isolated runtime link repair enabled generated-H.264 playback with a temporary official libffi7 compatibility package. The default Debian 13 host lacks libffi.so.7; a reviewed compatible runtime remains a delivery gate. Linux Swing picker and scoped ffmpeg environment fixes await final native export-dialog QA; all macOS/Windows native interaction checks remain pending.
+- Native Linux generated-clip playback failed. The bundle contains 155 small library-link placeholder files; examples `libgstreamer-1.0.so` and `libharfbuzz.so.0` are Git mode 100644 text rather than symlinks. See the candidate report for loader diagnostics. The source launcher now materialises and preflights the runtime; its loader override is scoped to Java and removed/restored for system ffmpeg.
+- A 15-second first-frame decode timeout is now implemented. Isolated runtime link repair enabled generated-H.264 playback with a temporary official libffi7 compatibility package. The default Debian 13 host lacks libffi.so.7; a reviewed compatible runtime remains a delivery gate. Linux Swing picker and scoped ffmpeg environment fixes passed full-export, existing-output rejection and guide-time live cancellation at `b87671b`. Optional native-plugin and internal callback warnings remain; all macOS/Windows native interaction checks and deliverable-runtime acceptance remain pending.
 - Encoder writes/close and finalisation now run off the UI thread behind a bounded queue/deadline. Queue overload fails explicitly. Publication requires hard-link-capable storage; unresponsive filesystem operations can still delay background save completion.
 
 - Runtime video playback depends on bundled platform-specific Processing video/GStreamer native files.
@@ -160,7 +160,7 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 ## Next steps
 
-1. Complete independent review and exact-head CI for the candidate draft PR.
+1. Review the runtime-isolation/startup-buffer delta and verify final-head CI. The earlier export/workflow review passed at `83d9cd5`; the latest push CI exposed encoder-startup queue sensitivity, fixed with bounded byte-budgeted buffering and a slow-start regression.
 2. Test normal-launch GUI interactions and native load/live/full-process exports on each supported desktop.
 3. Resolve redistribution/project-licence gates and establish editor-valued workflow benefit before any paid offer. No release or store upload is authorised in this work.
 
@@ -182,4 +182,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 16:27
+Last updated: 2026-10-06 16:36

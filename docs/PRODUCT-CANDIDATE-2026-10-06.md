@@ -9,14 +9,14 @@ Date: 6 October 2026. Base: `7d4eae357a4b19755d0e0aa66971e6d42ffede13`.
 - Both export modes have a destination picker. Existing files and symlink destinations are rejected, including the loaded source. Cancelling the picker does not start/restart playback.
 - Encoding uses a private temporary file in the destination directory. Publication creates a same-directory hard link in one no-replace operation, so a file created by another application during encoding cannot be replaced. No error path deletes the destination, avoiding deletion of a replacement owned by another process. Filesystems without hard-link support (for example some removable/network volumes) fail clearly; use a supported local output folder.
 - `X` cancels and discards; the existing `E` / `Stop Output` retains a partial recording. Normal application disposal aborts an unfinished export.
-- Bounded stderr capture gives recovery information in the status bar. A four-frame queue moves pipe writes/close off the UI thread and fails rather than silently dropping frames when the encoder cannot keep up. Background finalisation has a 30-second deadline including the writer, pipe close and process exit. Cancellation is non-blocking; it is no longer accepted once the completed file starts its single publication operation. Invalid/empty frames and zero-frame exports fail rather than report success.
+- Bounded stderr capture gives recovery information in the status bar. A byte-budgeted queue (up to 48 frames, targeting 64 MiB and at least one frame) moves pipe writes/close off the UI thread and fails rather than silently dropping frames when the encoder cannot keep up. Background finalisation has a 30-second deadline including the writer, pipe close and process exit. Cancellation is non-blocking; it is no longer accepted once the completed file starts its single publication operation. Invalid/empty frames and zero-frame exports fail rather than report success.
 - HUD text is readable on its dark background; `U` now works in ordinary preview as already documented.
 
 ## Verification actually performed
 
 Linux x86_64, OpenJDK 21.0.12.1, system ffmpeg/ffprobe 7.1.5:
 
-- `bash scripts/check.sh --with-ffmpeg`: app compilation, Java logic tests, three Python packaging tests and 89 real-encoder integration assertions pass.
+- `bash scripts/check.sh --with-ffmpeg`: app compilation, Java logic tests, 12 Python checks (packaging and Linux link safety) and 93 real-encoder integration assertions pass.
 - Output is decoded and checked for red pixels, correct row stride/odd-edge cropping, H.264, even dimensions, 24 frames, 24 fps and one-second duration.
 - Failure checks cover existing/source files, a destination appearing during encoding, symlinks, cancellation/retry, missing binary/folder, invalid frame/dimensions/fps, empty output, encoder error text and finalisation timeout.
 - `git diff --check` passes.
@@ -56,4 +56,18 @@ This is a verified native-runtime blocker, not an export-engine test failure or 
 
 On this Debian 13 host, the repaired runtime requires `libffi.so.7`, absent from the host. For QA only, the official [Debian libffi7 3.3-6 package](https://packages.debian.org/bullseye/amd64/libffi7/download) was extracted into a temporary directory, without installing or replacing system libraries. This enabled native H.264 playback. It is not added to the repository/release or presented as a redistribution clearance. A compatible/provenance-reviewed runtime remains a delivery prerequisite.
 
-Testing also exposed native GTK picker incompatibility under the older bundled libraries and contamination of the system ffmpeg subprocess loader. Linux now uses Processing's supported Swing file-picker path; the exporter restores the pre-launch loader environment for ffmpeg. Encoder regression tests pass both normally and under the scoped bundled-runtime environment. Only draw consumes video frames, avoiding concurrent reads from the GStreamer callback. Failed first-frame decoding is bounded to 15 seconds and returns an actionable retry state. These latest native-dialog changes await final GUI confirmation.
+Testing also exposed native GTK picker incompatibility under the older bundled libraries and contamination of the system ffmpeg subprocess loader. Linux now uses Processing's supported Swing file-picker path; the exporter restores the pre-launch loader environment for ffmpeg. Encoder regression tests pass both normally and under the scoped bundled-runtime environment. Only draw consumes video frames, avoiding concurrent reads from the GStreamer callback. Failed first-frame decoding is bounded to 15 seconds and returns an actionable retry state. The latest native-dialog changes passed the focused GUI checks below at `b87671b`.
+
+## Final focused native result
+
+Normal GUI testing at `b87671b` used the materialised runtime, bundled GStreamer 1.20.3, temporary libffi7 and temporary graphical Temurin JRE. Verified:
+
+- Generated 640×360 / 24 fps / three-second H.264 input loads and previews.
+- Full-clip Swing save dialog works and produces a saved result. System ffprobe confirms silent H.264/yuv420p, 1364×1024 preview-canvas output, 24 fps and three-second duration.
+- Re-selecting the existing output is refused with an actionable visible error; the prior MP4 remains playable.
+- Live export starts under a new filename. Opening the guide then pressing X cancels successfully; after normal app exit the cancelled path is absent.
+- Screenshots were inspected for all four compact controls, the guide, successful save, overwrite refusal and guide-time cancellation.
+
+These are focused Linux checks with temporary QA dependencies, not full supported-platform acceptance or proof of a shippable Linux bundle. Optional TLS/WebRTC plugin warnings (including missing OpenSSL 1.1) and internal GStreamer callback warnings remain. A clean, reproducible, provenance-reviewed native runtime is still required for delivery; all macOS/Windows native checks remain open.
+
+At `b87671b`, PR CI passed while duplicate push CI exposed a scheduling-sensitive four-frame startup queue. The final revision uses a bounded queue targeting 64 MiB (at least one frame, at most 48) and includes a delayed-encoder-start regression that verifies all 24 frames are preserved. Overload remains an explicit failure, never silent dropping. Final exact-head CI and independent review of the runtime/startup-buffer delta must be checked before moving the draft forward.

@@ -32,6 +32,7 @@ public final class FfmpegVideoExporterTest {
                 testEncoderFailure(directory);
                 testEncoderTimeout(directory);
                 testNonReadingEncoder(directory);
+                testSlowEncoderStartup(directory);
                 testSymlinkDestination(directory);
             }
             assertNoStagingFiles(directory);
@@ -181,7 +182,7 @@ public final class FfmpegVideoExporterTest {
         exporter.writeFrame(frame); // Far larger than a pipe buffer; must not block this caller.
         check(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 1000, "Render thread must not wait for a blocked pipe");
         boolean overflow = false;
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 64; i++) {
             try { exporter.writeFrame(frame); } catch (IOException expected) { overflow = true; break; }
         }
         check(overflow, "Bounded queue must fail rather than silently drop frames or grow indefinitely");
@@ -197,6 +198,19 @@ public final class FfmpegVideoExporterTest {
         started = System.nanoTime();
         expectIOException(() -> finishing.finish(100, TimeUnit.MILLISECONDS), "Deadline must include pipe write/close, not just process wait");
         check(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - started) < 10, "Blocked-pipe finish must terminate");
+        assertNoStagingFiles(directory);
+    }
+
+    private static void testSlowEncoderStartup(Path directory) throws Exception {
+        Path binary = directory.resolve("slow-start-encoder.sh");
+        Files.writeString(binary, "#!/bin/sh\nsleep 0.5\nexec ffmpeg \"$@\"\n");
+        check(binary.toFile().setExecutable(true), "Slow-start test encoder executable");
+        Path output = directory.resolve("slow-start.mp4");
+        FfmpegVideoExporter exporter = FfmpegVideoExporter.start(binary.toString(), output.toString(), 64, 48, 24);
+        for (int i = 0; i < 24; i++) exporter.writeFrame(new int[64 * 48]);
+        exporter.finish();
+        String count = new String(run("ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", output.toString())).trim();
+        check(count.equals("24"), "Encoder startup buffering must preserve every accepted frame");
         assertNoStagingFiles(directory);
     }
 

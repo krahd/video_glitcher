@@ -28,7 +28,7 @@ final class FfmpegVideoExporter {
     private long framesWritten;
     private enum State { OPEN, FINISHING, PUBLISHING, FINISHED, ABORTED }
     private final AtomicReference<State> state = new AtomicReference<>(State.OPEN);
-    private final ArrayBlockingQueue<byte[]> pendingFrames = new ArrayBlockingQueue<>(4);
+    private final ArrayBlockingQueue<byte[]> pendingFrames;
     private final CountDownLatch writerStopped = new CountDownLatch(1);
     private final CountDownLatch cleanupFinished = new CountDownLatch(1);
     private volatile IOException writerFailure;
@@ -42,6 +42,9 @@ final class FfmpegVideoExporter {
         this.outputPath = outputPath;
         this.temporaryPath = temporaryPath;
         this.frameBuffer = new byte[Math.multiplyExact(Math.multiplyExact(frameSpec.exportWidth(), frameSpec.exportHeight()), 3)];
+        // Allow short encoder startup/scheduling delays without unbounded buffering. At least one frame fits.
+        int queueCapacity = Math.max(1, Math.min(48, (64 * 1024 * 1024) / frameBuffer.length));
+        this.pendingFrames = new ArrayBlockingQueue<>(queueCapacity);
         diagnosticReader = new Thread(() -> readDiagnostics(process.getErrorStream()), "ffmpeg-diagnostics");
         diagnosticReader.setDaemon(true);
         diagnosticReader.start();
