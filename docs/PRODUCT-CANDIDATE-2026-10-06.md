@@ -16,12 +16,12 @@ Date: 6 October 2026. Base: `7d4eae357a4b19755d0e0aa66971e6d42ffede13`.
 
 Linux x86_64, OpenJDK 21.0.12.1, system ffmpeg/ffprobe 7.1.5:
 
-- `bash scripts/check.sh --with-ffmpeg`: app compilation, Java logic tests, three Python packaging tests and 59 real-encoder integration assertions pass.
+- `bash scripts/check.sh --with-ffmpeg`: app compilation, Java logic tests, three Python packaging tests and 89 real-encoder integration assertions pass.
 - Output is decoded and checked for red pixels, correct row stride/odd-edge cropping, H.264, even dimensions, 24 frames, 24 fps and one-second duration.
 - Failure checks cover existing/source files, a destination appearing during encoding, symlinks, cancellation/retry, missing binary/folder, invalid frame/dimensions/fps, empty output, encoder error text and finalisation timeout.
 - `git diff --check` passes.
 
-This is headless build/export evidence, not desktop acceptance. The available cloud desktop has a separate filesystem; an attempted launch confirmed the executor script was absent there. At this checkpoint no changed GUI screenshot, native Processing/GStreamer smoke, macOS or Windows interaction test has passed. The new CI workflow checks builds/logic/packaging on three platforms and real encoding on Linux; its results must be verified for the final remote SHA.
+This is headless build/export evidence, not desktop acceptance. The available cloud desktop has a separate filesystem; an attempted launch confirmed the executor script was absent there. A separate cloud desktop checkout was subsequently cloned and built. Its installed Java was headless, so a disposable official Temurin graphical JRE was downloaded without changing the system runtime. Normal-launch startup, guide readability/open-close and U hide/show were visually checked on Linux at code revision `8961eee`. This exposed a compact-panel height calculation that hid the fourth slider; the candidate now includes its fix, pending repeat visual validation. Native video load/export and macOS/Windows interaction acceptance remain pending. The new CI workflow checks builds/logic/packaging on three platforms and real encoding on Linux; its results must be verified for the final remote SHA.
 
 ## Remaining release and commercial gates
 
@@ -33,3 +33,11 @@ This is headless build/export evidence, not desktop acceptance. The available cl
 6. Keep this as a draft PR until independent review, GUI/platform acceptance and exact-head CI are resolved. No merge, tag, binary publication, deployment, store upload, billing activation or outreach belongs to this change.
 
 The original Processing sketch is retained as a historical source; the maintained Java application is the implementation tested here.
+
+## Adversarial review iteration
+
+- Reproduced a non-reading encoder freezing the original candidate's UI-thread write. Added queued writing, background finish and blocked-pipe/cancellation/deadline tests.
+- Independent review reproduced 20/20 normal Processing exits leaving staging files before the fix and 0/20 after the exporter shutdown hook. Ten subprocess exit cycles are retained in the regression suite.
+- Snapshotted the actual finishing destination, deferred loading the next clip until save finishes, and transferred native file-picker callbacks onto the Processing draw thread.
+- Added workflow state tests for picker cancellation, asynchronous completion filenames, guide-time X cancellation and a real smoke-timeout subprocess that must exit 1 rather than report success without output.
+- Independent cancellation/publication stress tests reported consistent outcomes with no staging leaks, including cases where cancellation and publication each won.

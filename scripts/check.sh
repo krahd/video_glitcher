@@ -16,11 +16,12 @@ if ! command -v javac >/dev/null; then
 fi
 mkdir -p bin test-bin
 "${compiler[@]}" -cp "$classpath" -d bin src/tom/videoGlitcher/*.java
-"${compiler[@]}" -d test-bin src/tom/videoGlitcher/VideoGlitcherLogic.java src/tom/videoGlitcher/FfmpegVideoExporter.java test/tom/videoGlitcher/*.java
+"${compiler[@]}" -cp "bin${separator}${classpath}" -d test-bin src/tom/videoGlitcher/VideoGlitcherLogic.java src/tom/videoGlitcher/FfmpegVideoExporter.java test/tom/videoGlitcher/*.java
 java -cp test-bin tom.videoGlitcher.VideoGlitcherLogicTest
 python3 -m unittest discover -s test -p 'test_*.py'
 if [[ "${1:-}" == "--with-ffmpeg" ]]; then
   command -v ffmpeg >/dev/null
   command -v ffprobe >/dev/null
   java -cp test-bin tom.videoGlitcher.FfmpegVideoExporterTest
+  java -Djava.awt.headless=true -cp "bin${separator}test-bin${separator}${classpath}" tom.videoGlitcher.VideoGlitcherWorkflowTest
 fi

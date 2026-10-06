@@ -33,6 +33,7 @@ final class FfmpegVideoExporter {
     private final CountDownLatch cleanupFinished = new CountDownLatch(1);
     private volatile IOException writerFailure;
     private final Thread frameWriter;
+    private final Thread shutdownHook;
 
     private FfmpegVideoExporter(Process process, FrameSpec frameSpec, Path outputPath, Path temporaryPath) {
         this.process = process;
@@ -47,6 +48,13 @@ final class FfmpegVideoExporter {
         frameWriter = new Thread(this::writeQueuedFrames, "ffmpeg-frame-writer");
         frameWriter.setDaemon(true);
         frameWriter.start();
+        // Processing uses System.exit, which does not wait for ordinary cleanup threads.
+        shutdownHook = new Thread(() -> {
+            abort();
+            try { cleanupFinished.await(10, TimeUnit.SECONDS); }
+            catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
+        }, "ffmpeg-shutdown-cleanup");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     static FfmpegVideoExporter start(String outputFilename, int sourceWidth, int sourceHeight, int fps) throws IOException {
@@ -167,6 +175,7 @@ final class FfmpegVideoExporter {
                     synchronized (diagnostics) { diagnostics.append(" Temporary file cleanup failed: ").append(temporaryPath); }
                 }
                 cleanupFinished.countDown();
+                removeShutdownHook();
             }
         }
     }
@@ -197,6 +206,8 @@ final class FfmpegVideoExporter {
 
     private void cleanUp() {
         pendingFrames.clear();
+        // PATH may resolve to a wrapper script. Terminate its current encoder descendants as well.
+        process.descendants().forEach(child -> { if (child.isAlive()) child.destroyForcibly(); });
         process.destroyForcibly();
         frameWriter.interrupt();
         try {
@@ -207,6 +218,12 @@ final class FfmpegVideoExporter {
         }
         try { Files.deleteIfExists(temporaryPath); } catch (IOException ignored) { }
         cleanupFinished.countDown();
+        removeShutdownHook();
+    }
+
+    private void removeShutdownHook() {
+        try { Runtime.getRuntime().removeShutdownHook(shutdownHook); }
+        catch (IllegalStateException ignored) { /* JVM shutdown already in progress. */ }
     }
 
     boolean awaitCleanup(long timeout, TimeUnit unit) throws InterruptedException {

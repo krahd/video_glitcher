@@ -11,6 +11,13 @@ import java.util.concurrent.TimeUnit;
 public final class FfmpegVideoExporterTest {
     private static int checks;
     public static void main(String[] args) throws Exception {
+        if (args.length == 2 && args[0].equals("--exit-child")) {
+            Path output = Path.of(args[1]).resolve("exit.mp4");
+            FfmpegVideoExporter exporter = FfmpegVideoExporter.start(output.toString(), 640, 360, 24);
+            exporter.writeFrame(new int[640 * 360]);
+            exporter.abort(); // Same nonblocking dispose + System.exit sequence as Processing.
+            System.exit(0);
+        }
         Path directory = Files.createTempDirectory("video-glitcher-tests-");
         try {
             testSuccessfulOutput(directory);
@@ -20,6 +27,7 @@ public final class FfmpegVideoExporterTest {
             testInvalidFrames(directory);
             testMissingEncoderAndFolder(directory);
             testEmptyExport(directory);
+            testNormalApplicationExit(directory);
             if (!System.getProperty("os.name").startsWith("Windows")) {
                 testEncoderFailure(directory);
                 testEncoderTimeout(directory);
@@ -123,6 +131,18 @@ public final class FfmpegVideoExporterTest {
         FfmpegVideoExporter exporter = FfmpegVideoExporter.start(output.toString(), 4, 4, 24);
         expectIOException(exporter::finish, "Zero-frame export must not count as success");
         check(!Files.exists(output), "Zero-frame export must not publish a file");
+    }
+
+    private static void testNormalApplicationExit(Path directory) throws Exception {
+        String java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java").toString();
+        for (int i = 0; i < 10; i++) {
+            Process child = new ProcessBuilder(java, "-cp", System.getProperty("java.class.path"),
+                    FfmpegVideoExporterTest.class.getName(), "--exit-child", directory.toString())
+                    .inheritIO().start();
+            check(child.waitFor(15, TimeUnit.SECONDS) && child.exitValue() == 0, "Normal exit must finish cleanup promptly");
+            check(!Files.exists(directory.resolve("exit.mp4")), "Normal exit must not publish unfinished output");
+            assertNoStagingFiles(directory);
+        }
     }
 
     private static void testEncoderFailure(Path directory) throws Exception {

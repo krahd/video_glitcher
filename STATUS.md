@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 15:46
+Last updated: 2026-10-06 16:00
 
 ## Project purpose
 
@@ -133,7 +133,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 Automated coverage targets pure Java logic extracted from the fullscreen Processing sketch, including export filename generation, video-fit calculations, range normalisation, glitch state transitions, and ffmpeg export setup.
 
-On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 59 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. GUI/native runtime acceptance is not established by these tests.
+On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, three Python packaging tests and 89 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. Workflow tests also cover native-picker handoff, asynchronous completion filenames, guide-time cancel and failing smoke timeouts. Initial normal-launch Linux screenshots verified guide open/close and U hide/show; the discovered compact-panel height fix awaits repeat visual validation. Full native video/runtime and macOS/Windows acceptance remain pending.
 
 Manual/runtime validation remains important because fullscreen Processing behaviour, native video library compatibility, GUI interaction, and ffmpeg export depend on the local platform/runtime environment.
 
@@ -180,4 +180,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 15:46
+Last updated: 2026-10-06 16:00
