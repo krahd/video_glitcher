@@ -8,9 +8,11 @@ in an existing destination is deleted, replaced or treated as a ready build.
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import hashlib
 import io
 import json
+import os
 import re
 import shutil
 import stat
@@ -62,6 +64,14 @@ def expected_payloads(repo: Path, platform: str) -> dict[str, Path]:
         if name == "lib/core.jar" or (str(path.parent) in jars and path.suffix == ".jar"):
             destination = "video_glitcher/lib/" + path.name
         elif name.startswith(native):
+            # The inspected native trees contain only these library kinds. New
+            # notice/resource kinds need an explicit reviewed exception, not a
+            # recursive-copy wildcard (or removal of their required notices).
+            relative = name.removeprefix(native)
+            suffix = {"linux-amd64": r"\.so(?:\.[0-9]+)*", "macos-aarch64": r"\.dylib",
+                      "windows-amd64": r"\.dll"}[platform]
+            if not re.fullmatch(r"(?:[A-Za-z0-9_.+-]+/)*[A-Za-z0-9_.+-]+" + suffix, relative):
+                raise ValueError(f"Unreviewed native payload kind: {name}")
             destination = "video_glitcher/video/" + name.removeprefix("lib/video/library/")
         elif name == "packaging/portable/" + launcher:
             destination = "video_glitcher/" + launcher
@@ -87,6 +97,7 @@ def checked_entries(archive: zipfile.ZipFile, allowed: set[str], max_bytes: int)
         raise ValueError("Archive exceeds the internal inspection size/entry limit")
     directories = {str(parent) for name in allowed for parent in PurePosixPath(name).parents if str(parent) != "."}
     seen = set()
+    nodes = {}
     files = {}
     for info in infos:
         name = info.filename.rstrip("/")
@@ -100,6 +111,15 @@ def checked_entries(archive: zipfile.ZipFile, allowed: set[str], max_bytes: int)
         if key in seen:
             raise ValueError(f"Duplicate/case-colliding archive path: {name}")
         seen.add(key)
+        # ZIP writers may omit directory entries. Check every implied prefix,
+        # including file-versus-directory identity on case-insensitive targets.
+        for length in range(1, len(parts) + 1):
+            prefix = "/".join(parts[:length])
+            kind = "directory" if length < len(parts) or info.is_dir() else "file"
+            identity = (prefix, kind)
+            old = nodes.setdefault(prefix.casefold(), identity)
+            if old != identity:
+                raise ValueError(f"Conflicting archive path component: {prefix}")
         mode = stat.S_IFMT(info.external_attr >> 16)
         if mode not in (0, stat.S_IFREG, stat.S_IFDIR) or (mode == stat.S_IFDIR and not info.is_dir()):
             raise ValueError(f"Archive links/special files are not accepted: {name}")
@@ -143,14 +163,24 @@ def inspect_app_jar(payload: bytes) -> int:
         return max(majors) - 44
 
 
-def inspect_archive(path: Path, payloads: dict[str, Path]) -> dict:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"Archive must be a regular file, not a link: {path.name}")
-    if path.stat().st_size > MAX_ARCHIVE_BYTES:
-        raise ValueError("Archive is too large for internal inspection")
+def inspect_archive(path_or_handle, payloads: dict[str, Path]) -> dict:
+    # Staging supplies an already-open regular-file handle anchored to its source
+    # directory. Path use is a read-only inspection convenience for tests/tools.
+    if isinstance(path_or_handle, Path):
+        path = path_or_handle
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"Archive must be a regular file, not a link: {path.name}")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        with os.fdopen(os.open(path, flags), "rb") as handle:
+            return inspect_archive(handle, payloads)
+    handle = path_or_handle
+    metadata = os.fstat(handle.fileno())
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_ARCHIVE_BYTES:
+        raise ValueError("Archive must be a regular file within the inspection size limit")
+    handle.seek(0)
     app_name = "video_glitcher/video_glitcher.jar"
     expected = set(payloads) | {app_name}
-    with zipfile.ZipFile(path) as archive:
+    with zipfile.ZipFile(handle) as archive:
         entries = checked_entries(archive, expected, MAX_ARCHIVE_BYTES)
         for name, source in payloads.items():
             if entries[name].file_size != source.stat().st_size:
@@ -166,58 +196,106 @@ def inspect_archive(path: Path, payloads: dict[str, Path]) -> dict:
             "appJarCheck": "class-allowlist-and-headers-only", "minimumJavaFromAppClasses": minimum_java}
 
 
+def supports_safe_staging() -> bool:
+    return (hasattr(os, "O_DIRECTORY") and hasattr(os, "O_NOFOLLOW")
+            and all(function in os.supports_dir_fd for function in (os.open, os.mkdir, os.stat))
+            and os.stat in os.supports_follow_symlinks)
+
+
+def open_directory(stack: ExitStack, path, *, parent_fd=None) -> int:
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
+    stack.callback(os.close, fd)
+    return fd
+
+
+def open_regular_at(directory_fd: int, name: str, *, create: bool = False):
+    flags = os.O_NOFOLLOW | (os.O_RDWR | os.O_CREAT | os.O_EXCL if create else os.O_RDONLY)
+    fd = os.open(name, flags, 0o600, dir_fd=directory_fd)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise ValueError(f"Expected regular file: {name}")
+    return os.fdopen(fd, "w+b" if create else "rb")
+
+
+def assert_directory_identity(parent_fd: int, name: str, directory_fd: int) -> None:
+    current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    opened = os.fstat(directory_fd)
+    if not stat.S_ISDIR(current.st_mode) or (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
+        raise ValueError("Staging directory identity changed; partial output retained, no completion manifest")
+
+
+def write_text_at(directory_fd: int, name: str, text: str) -> None:
+    with open_regular_at(directory_fd, name, create=True) as handle:
+        handle.write(text.encode("utf-8"))
+
+
 def stage_supported_build(repo: Path, source: Path, output: Path, version: str, *, internal_provenance_only: bool = False) -> dict:
     if not internal_provenance_only:
         raise RuntimeError("Release archives are not cleared for paid redistribution; see docs/REDISTRIBUTION-AUDIT.md")
+    if not supports_safe_staging():
+        raise RuntimeError("Internal staging requires POSIX directory-fd/no-follow capabilities; staging is unsupported on this platform")
     repo = repo.resolve(strict=True)
     source = source.resolve(strict=True)
     output = output.absolute()
     generated_root = repo / "dist"
-    if generated_root.is_symlink() or not output.resolve().is_relative_to(generated_root.resolve()) or output.resolve() == generated_root.resolve():
-        raise ValueError("Output must be a new directory strictly inside this checkout's dist/ directory")
-    if output.exists() or output.is_symlink():
-        raise FileExistsError("Output already exists; choose a NEW generated directory. Nothing was removed")
-    if source.is_relative_to(output.resolve()):
-        raise ValueError("Output must not contain the source archive directory")
+    # A single new child is enough for internal inspection. No recursive parent
+    # creation and no symlink-bearing intermediate path are supported.
+    if output.parent != generated_root or output.name in ("", ".", ".."):
+        raise ValueError("Output must be a NEW immediate child directory of this checkout's existing dist/ directory")
     if not version or any(ord(c) < 32 for c in version):
         raise ValueError("Version must be a non-empty single-line label")
-    missing = [name for name in ASSETS if not (source / name).is_file()]
-    if missing:
-        raise FileNotFoundError("Missing required release asset(s): " + ", ".join(missing))
 
-    # Check every input before claiming a destination. No extraction or execution.
-    staging_commit = git_head(repo)
-    assets = []
-    for platform, name in zip(PLATFORMS, ASSETS):
-        src = source / name
-        inspection = inspect_archive(src, expected_payloads(repo, platform))
-        assets.append({"file": name, "sha256": sha256(src), "bytes": src.stat().st_size, "inspection": inspection})
+    with ExitStack() as stack:
+        repo_fd = open_directory(stack, repo)
+        dist_fd = open_directory(stack, "dist", parent_fd=repo_fd)
+        source_fd = open_directory(stack, source)
+        try:
+            os.stat(output.name, dir_fd=dist_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
+            raise FileExistsError("Output already exists; choose a NEW generated directory. Nothing was removed")
 
-    # mkdir is exclusive even if another process claims this path after preflight.
-    # Avoid rename(): on POSIX it can silently replace an existing empty directory.
-    output.mkdir(parents=True, exist_ok=False)
-    for asset in assets:
-        with (source / asset["file"]).open("rb") as src, (output / asset["file"]).open("xb") as dst:
-            shutil.copyfileobj(src, dst)
-        if sha256(output / asset["file"]) != asset["sha256"]:
-            raise ValueError("Source archive changed during copy; partial output retained, no completion manifest")
-        platform = next(p for p in PLATFORMS if asset["file"] == f"video_glitcher-{p}.zip")
-        inspect_archive(output / asset["file"], expected_payloads(repo, platform))
+        # Hold the original source/destination directories throughout preflight.
+        # Later path replacement cannot redirect mkdir/open/write operations.
+        staging_commit = git_head(repo)
+        assets = []
+        payloads_by_asset = {}
+        for platform, name in zip(PLATFORMS, ASSETS):
+            payloads = expected_payloads(repo, platform)
+            payloads_by_asset[name] = payloads
+            with open_regular_at(source_fd, name) as src:
+                inspection = inspect_archive(src, payloads)
+                src.seek(0)
+                digest = hashlib.file_digest(src, "sha256").hexdigest()
+                assets.append({"file": name, "sha256": digest, "bytes": os.fstat(src.fileno()).st_size,
+                               "inspection": inspection})
 
-    manifest = {
-        "schema": 2, "product": "video_glitcher", "versionLabel": version,
-        "stagingCheckoutCommit": staging_commit,
-        "stagingCheckoutScope": "HEAD identifier only; working-tree cleanliness is not attested",
-        "archiveSourceCommit": None,
-        "archiveSourceVerification": "unverified; local HEAD and payload matching are not build provenance",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "distribution": "internal-provenance-staging", "redistributionClearance": "not-cleared",
-        "nativeRuntimeAcceptance": "not-established-by-packaging", "assets": assets,
-    }
-    with (output / "SHA256SUMS").open("x", encoding="utf-8") as handle:
-        handle.write("".join(f"{asset['sha256']}  {asset['file']}\n" for asset in assets))
-    with (output / "README-SUPPORTED-BUILD.txt").open("x", encoding="utf-8") as handle:
-        handle.write(
+        assert_directory_identity(repo_fd, "dist", dist_fd)
+        # mkdir is exclusive even if somebody claims the leaf after preflight.
+        os.mkdir(output.name, mode=0o700, dir_fd=dist_fd)
+        output_fd = open_directory(stack, output.name, parent_fd=dist_fd)
+        for asset in assets:
+            with open_regular_at(source_fd, asset["file"]) as src, open_regular_at(output_fd, asset["file"], create=True) as dst:
+                shutil.copyfileobj(src, dst)
+                dst.flush()
+                dst.seek(0)
+                if hashlib.file_digest(dst, "sha256").hexdigest() != asset["sha256"]:
+                    raise ValueError("Source archive changed during copy; partial output retained, no completion manifest")
+                inspect_archive(dst, payloads_by_asset[asset["file"]])
+
+        manifest = {
+            "schema": 2, "product": "video_glitcher", "versionLabel": version,
+            "stagingCheckoutCommit": staging_commit,
+            "stagingCheckoutScope": "HEAD identifier only; working-tree cleanliness is not attested",
+            "archiveSourceCommit": None,
+            "archiveSourceVerification": "unverified; local HEAD and payload matching are not build provenance",
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "distribution": "internal-provenance-staging", "redistributionClearance": "not-cleared",
+            "nativeRuntimeAcceptance": "not-established-by-packaging", "assets": assets,
+        }
+        write_text_at(output_fd, "SHA256SUMS", "".join(f"{asset['sha256']}  {asset['file']}\n" for asset in assets))
+        write_text_at(output_fd, "README-SUPPORTED-BUILD.txt",
             "INTERNAL PROVENANCE STAGING ONLY - NOT CLEARED FOR DISTRIBUTION OR SALE\n\n"
             f"Requested version label (not verified): {version}\n"
             f"Staging checkout (not archive source): {staging_commit}\n\n"
@@ -228,18 +306,19 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str, 
             "Linux native-link/dependency gaps and all platform acceptance/licensing gates remain.\n"
             "See docs/LOCAL-EVALUATION.md and docs/REDISTRIBUTION-AUDIT.md in the source checkout.\n"
             "Only a valid, complete support-manifest.json with matching checksums marks successful internal staging.\n")
-    # Last operation is the completion marker. Never clean up a destination by name:
-    # that name might later belong to somebody else. Failed outputs are not reused.
-    with (output / "support-manifest.json").open("x", encoding="utf-8") as handle:
-        handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    return manifest
+        # Writes remain anchored even after a rename. Detect changed public names
+        # before reporting success; never clean up somebody else's replacement.
+        assert_directory_identity(repo_fd, "dist", dist_fd)
+        assert_directory_identity(dist_fd, output.name, output_fd)
+        write_text_at(output_fd, "support-manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        return manifest
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", required=True, help="Unverified human version label, e.g. v1.1.3")
     parser.add_argument("--source", type=Path, default=Path("dist"), help="Directory containing the three release ZIPs")
-    parser.add_argument("--output", type=Path, default=Path("dist/supported-build"), help="NEW directory inside this checkout's dist/")
+    parser.add_argument("--output", type=Path, default=Path("dist/supported-build"), help="NEW immediate child directory of this checkout's existing dist/ (POSIX only)")
     parser.add_argument("--internal-provenance-only", action="store_true", help="Internal inspection only; does not clear redistribution")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]

@@ -50,7 +50,8 @@ class SupportedBuildPackagingTests(unittest.TestCase):
             self.add_payload(name)
         for platform, launcher in module.PLATFORMS.items():
             self.add_payload("packaging/portable/" + launcher)
-            self.add_payload(f"lib/video/library/{platform}/runtime.bin")
+            suffix = {"linux-amd64": ".so.1", "macos-aarch64": ".dylib", "windows-amd64": ".dll"}[platform]
+            self.add_payload(f"lib/video/library/{platform}/runtime{suffix}")
         self.paths_patch = mock.patch.object(module, "tracked_paths", side_effect=lambda repo: list(self.tracked))
         self.paths_patch.start()
         self.head_patch = mock.patch.object(module, "git_head", return_value="a" * 40)
@@ -79,12 +80,15 @@ class SupportedBuildPackagingTests(unittest.TestCase):
                 archive.writestr(*extra)
 
     def stage(self, **kwargs):
+        if kwargs.get("internal_provenance_only", True) and not module.supports_safe_staging():
+            self.skipTest("Internal staging requires POSIX directory-fd/no-follow capabilities")
         return module.stage_supported_build(self.repo, self.source, kwargs.pop("output", self.output), "v1.1.3",
                                             internal_provenance_only=kwargs.pop("internal_provenance_only", True), **kwargs)
 
     def refused_before_output(self, error=ValueError):
         with self.assertRaises(error):
-            self.stage()
+            for platform, name in zip(module.PLATFORMS, module.ASSETS):
+                module.inspect_archive(self.source / name, module.expected_payloads(self.repo, platform))
         self.assertFalse(self.output.exists())
 
     def test_copies_exact_bytes_and_never_invents_archive_provenance(self):
@@ -111,7 +115,9 @@ class SupportedBuildPackagingTests(unittest.TestCase):
 
     def test_missing_input_refused_before_output(self):
         (self.source / module.ASSETS[-1]).unlink()
-        self.refused_before_output(FileNotFoundError)
+        with self.assertRaises(FileNotFoundError):
+            self.stage()
+        self.assertFalse(self.output.exists())
 
     def test_existing_output_preserves_all_bytes(self):
         self.output.mkdir()
@@ -259,10 +265,133 @@ class SupportedBuildPackagingTests(unittest.TestCase):
             self.skipTest("Symlink creation not available on this runner")
         self.refused_before_output()
 
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
     def test_control_char_in_label_refused(self):
         with self.assertRaises(ValueError):
             module.stage_supported_build(self.repo, self.source, self.output, "fake\nclaim", internal_provenance_only=True)
         self.assertFalse(self.output.exists())
+
+    def test_missing_safe_directory_capability_fails_closed(self):
+        with mock.patch.object(module, "supports_safe_staging", return_value=False):
+            with self.assertRaisesRegex(RuntimeError, "unsupported on this platform"):
+                module.stage_supported_build(self.repo, self.source, self.output, "v1", internal_provenance_only=True)
+        self.assertFalse(self.output.exists())
+
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
+    def test_nested_output_and_inward_symlink_parent_are_refused(self):
+        inside = self.repo / "dist/existing-parent"
+        inside.mkdir()
+        alias = self.repo / "dist/alias"
+        alias.symlink_to(inside, target_is_directory=True)
+        for output in (alias / "new-output", inside / "new-output"):
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, "immediate child"):
+                self.stage(output=output)
+        self.assertEqual(list(inside.iterdir()), [])
+
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
+    def test_symlinked_dist_is_refused_even_when_target_is_inside_repo(self):
+        old_dist = self.repo / "dist"
+        moved = self.repo / "held-dist"
+        old_dist.rename(moved)
+        old_dist.symlink_to(moved, target_is_directory=True)
+        self.source = moved / "inputs"
+        with self.assertRaises(OSError):
+            self.stage()
+        self.assertFalse((moved / self.output.name).exists())
+
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
+    def test_dist_replaced_by_outside_symlink_during_inspection_is_refused(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        original_dist = self.repo / "held-dist"
+        real_inspect = module.inspect_archive
+        switched = False
+        def race(*args):
+            nonlocal switched
+            result = real_inspect(*args)
+            if not switched:
+                (self.repo / "dist").rename(original_dist)
+                (self.repo / "dist").symlink_to(outside, target_is_directory=True)
+                switched = True
+            return result
+        with mock.patch.object(module, "inspect_archive", side_effect=race), self.assertRaisesRegex(ValueError, "identity changed"):
+            self.stage()
+        self.assertEqual(list(outside.iterdir()), [])
+        self.assertFalse((original_dist / self.output.name).exists())
+
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
+    def test_creation_boundary_uses_held_parent_even_after_path_replacement(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        original_dist = self.repo / "held-dist"
+        real_mkdir = os.mkdir
+        switched = False
+        def race(name, *args, **kwargs):
+            nonlocal switched
+            if name == self.output.name and kwargs.get("dir_fd") is not None and not switched:
+                (self.repo / "dist").rename(original_dist)
+                (self.repo / "dist").symlink_to(outside, target_is_directory=True)
+                switched = True
+            return real_mkdir(name, *args, **kwargs)
+        # Replacing os.mkdir changes its Python identity in supports_dir_fd;
+        # retain the already-verified capability while instrumenting the call.
+        with mock.patch.object(module, "supports_safe_staging", return_value=True), mock.patch.object(os, "mkdir", side_effect=race):
+            with self.assertRaisesRegex(ValueError, "identity changed"):
+                self.stage()
+        self.assertTrue(switched)
+        self.assertEqual(list(outside.iterdir()), [])
+        held_output = original_dist / self.output.name
+        self.assertTrue(held_output.is_dir())
+        self.assertFalse((held_output / "support-manifest.json").exists())
+        self.assertTrue((held_output / module.ASSETS[0]).is_file())
+
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
+    def test_output_leaf_replaced_by_symlink_never_redirects_file_writes(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        held_output = self.repo / "dist/held-output"
+        original_copy = module.shutil.copyfileobj
+        switched = False
+        def race(src, dst):
+            nonlocal switched
+            if not switched:
+                self.output.rename(held_output)
+                self.output.symlink_to(outside, target_is_directory=True)
+                switched = True
+            return original_copy(src, dst)
+        with mock.patch.object(module.shutil, "copyfileobj", side_effect=race), self.assertRaisesRegex(ValueError, "identity changed"):
+            self.stage()
+        self.assertEqual(list(outside.iterdir()), [])
+        self.assertFalse((held_output / "support-manifest.json").exists())
+        self.assertEqual(len(list(held_output.glob("*.zip"))), 3)
+
+    def test_tracked_media_config_and_unreviewed_notice_kinds_fail_closed(self):
+        for leaf in ("owned-sample.mp4", "private.env", "LICENSE.txt", "notes.json", "installer.exe"):
+            with self.subTest(leaf=leaf):
+                name = "lib/video/library/macos-aarch64/" + leaf
+                self.add_payload(name)
+                with self.assertRaisesRegex(ValueError, "Unreviewed native payload kind"):
+                    module.expected_payloads(self.repo, "macos-aarch64")
+                self.tracked.remove(name)
+        self.assertFalse(self.output.exists())
+
+    def test_implicit_directory_case_collision_refused_without_directory_entries(self):
+        self.add_payload("lib/video/library/macos-aarch64/Case/a.dylib")
+        self.add_payload("lib/video/library/macos-aarch64/case/b.dylib")
+        self.write_archive("macos-aarch64", module.ASSETS[0])
+        self.refused_before_output()
+
+    def test_file_ancestor_collision_in_both_orders(self):
+        for names in (("root/a", "root/a/b"), ("root/a/b", "root/a")):
+            for case_variant in (False, True):
+                actual = (names[0], names[1].replace("root/a", "root/A") if case_variant else names[1])
+                stream = io.BytesIO()
+                with zipfile.ZipFile(stream, "w") as archive:
+                    for name in actual:
+                        archive.writestr(name, b"fixture")
+                with zipfile.ZipFile(stream) as archive, self.assertRaisesRegex(ValueError, "path component"):
+                    module.checked_entries(archive, set(actual), 100)
+
 
 
 if __name__ == "__main__":

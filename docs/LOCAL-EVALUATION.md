@@ -7,7 +7,7 @@ Checked 6 October 2026 against draft PR #2, source base `31e439bf616bad22e13242d
 - Use a complete checkout of the candidate on a desktop you control. Keep the terminal open to capture errors. Nothing here needs a sign-in, customer data or an uploaded video.
 - Use **JDK 21** to build and **Java 21 with desktop/AWT support** to run. Existing release CI uses JDK 21 without `--release`, so Java 17 compatibility cannot be promised. The release ZIPs include neither Java nor ffmpeg.
 - Check `java -version`, `javac -version`, `ffmpeg -version` and `ffmpeg -hide_banner -encoders`. The last output must include `libx264`. Having a program named ffmpeg is insufficient. For recorded inspection, also use `ffprobe`.
-- Python 3.11+ is needed for the checks/internal packager. VS Code is optional. The Linux source launcher additionally needs Bash, `ldd` and a compatible native desktop runtime.
+- Python 3.11+ is needed for the checks/internal packager. Internal staging is POSIX-only and fails closed without directory-fd/no-follow capabilities; this restriction does not imply the Windows application is accepted or rejected. VS Code is optional. The Linux source launcher additionally needs Bash, `ldd` and a compatible native desktop runtime.
 - Use an ordinary local filesystem supporting hard links for output. Keep original clips and previous outputs outside the disposable test directory. Do not use a network/removable/cloud-synchronised folder for the first test.
 - Stop at any missing native dependency or OS security warning. Do not replace system libraries, disable OS protections or download an unknown executable to make the test continue.
 

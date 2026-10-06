@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 22:47
+Last updated: 2026-10-06 22:57
 
 ## Project purpose
 
@@ -179,12 +179,13 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 ## Internal packaging/evaluation audit
 
-- `scripts/package_supported_build.py` requires `--internal-provenance-only`, a complete matching checkout and a new destination strictly inside `dist/`. It never recursively deletes or replaces an existing destination. Concurrent destination claims, symlinks, untracked/archive-extra payloads, path traversal, duplicate paths, payload mismatches and malformed class JARs are refused. Failed copies remain partial and cannot be reused as success.
+- `scripts/package_supported_build.py` requires `--internal-provenance-only`, a complete matching checkout and a new immediate-child destination under an existing non-symlink `dist/`. Staging requires POSIX directory-fd/no-follow capabilities and fails closed on Windows/unsupported runtimes. It never recursively deletes or replaces an existing destination. Concurrent destination claims, symlinks, untracked/archive-extra payloads, path traversal, duplicate paths, payload mismatches and malformed class JARs are refused. Failed copies remain partial and cannot be reused as success.
+- Independent packaging review reproduced output-parent TOCTOU redirection, tracked media/config inclusion and implicit directory case collisions. The repair holds original directory handles and uses exclusive no-follow directory-relative writes; it checks path identities before completion, rejects nested/symlink output parents, restricts native file kinds and validates all implicit archive path components. New owned-fixture regressions exercise replacement before creation and during copying, with outside directories untouched. Re-review remains pending.
 - Schema 2 records `stagingCheckoutCommit`; `archiveSourceCommit` remains null/unverified. It no longer misrepresents local HEAD or a requested version label as archive build provenance. The app JAR receives structural checks only; native acceptance and redistribution clearance remain unestablished.
 - Portable launchers now forward CLI/smoke arguments unchanged. Stub process tests verify literal paths/presets with spaces and non-zero exit propagation; they do not exercise Java/GStreamer/GPU startup.
 - README states Java 21, desktop/AWT and external libx264-capable ffmpeg requirements. `docs/LOCAL-EVALUATION.md` covers load, effects, compare, preview, safe full/live export, finding output, discard, overwrite refusal and repeat loading with synthetic media only.
 - `docs/REDISTRIBUTION-AUDIT.md` now inventories native trees, exact recipe scope, media/owner decisions and official upstream licensing sources. No new project licence is chosen, and inherited binaries/notices remain unchanged.
-- Local verification for this audit: 38 Python tests ran, 36 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Exact-head CI and independent review remain required. No release artifact, installer or external upload was produced.
+- Local verification for this audit: 47 Python tests ran, 45 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Before this review repair, exact-head CI passed at `e6a67051af74e8cd58c5d2f5fc83098f5d070f11` in runs `37542960852` and `37542955166`, including full application compilation on Linux/macOS/Windows, 93 encoder checks and workflow tests. The repaired head requires fresh CI and independent re-review. No release artifact, installer or external upload was produced.
 - Existing release asset names, publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. Their runtime/rights gaps are documented, not declared solved by these tests.
 
-Last updated: 2026-10-06 22:47
+Last updated: 2026-10-06 22:57
