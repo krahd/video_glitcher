@@ -35,6 +35,8 @@ public final class VideoGlitcherWorkflowTest {
         Path directory = Files.createTempDirectory("video-glitcher-workflow-");
         try {
             testSmokeTimeout(directory);
+            testLoadAfterPauseOrExport(directory, false);
+            testLoadAfterPauseOrExport(directory, true);
             Path actual = directory.resolve("actual.mp4");
             FfmpegVideoExporter exporter = FfmpegVideoExporter.start(actual.toString(), 4, 4, 24);
             exporter.writeFrame(new int[16]);
@@ -66,6 +68,83 @@ public final class VideoGlitcherWorkflowTest {
         }
         System.out.println("All VideoGlitcher workflow state tests passed.");
     }
+    private static void testLoadAfterPauseOrExport(Path directory, boolean afterExport) throws Exception {
+        TestVideoGlitcher app = new TestVideoGlitcher();
+        ReadyMovie old = readyMovie();
+        set(app, "video", old);
+        set(app, "movieReady", true);
+        if (afterExport) {
+            Path output = directory.resolve("before-next-load.mp4");
+            FfmpegVideoExporter exporter = FfmpegVideoExporter.start(output.toString(), 4, 4, 24);
+            exporter.writeFrame(new int[16]);
+            set(app, "videoExporter", exporter); set(app, "exporting", true); set(app, "exportFilename", output.toString());
+            for (Object mode : Class.forName("tom.videoGlitcher.VideoGlitcher$ExportMode").getEnumConstants()) {
+                if (mode.toString().equals("FULL_PROCESS")) set(app, "exportMode", mode);
+            }
+            invoke(app, "updatePlaybackCompletion");
+            waitForFinish(app);
+            check(Files.exists(output), "Full export must really complete before repeated-load test");
+        } else {
+            app.pausePlay();
+        }
+        check((boolean) get(app, "paused"), "Actual prior transition must pause the old clip");
+        Object oldPausedFrame = get(app, "pausedFrame");
+        set(app, "selectingVideo", true);
+        app.videoSelected(null);
+        drainPickerActions(app);
+        check((boolean) get(app, "paused") && get(app, "pausedFrame") == oldPausedFrame,
+                "Cancelling the picker must preserve the old pause state and frame");
+        check(get(app, "video") == old && !old.stopped, "Picker cancellation must preserve the old pipeline");
+        set(app, "freezeManual", true); set(app, "freezeFramesLeft", 5);
+        set(app, "selectingVideo", true);
+        app.videoSelected(directory.resolve(afterExport ? "after-export.mp4" : "after-pause.mp4").toFile());
+        check((boolean) get(app, "paused"), "Queued selection must not reset playback before draw handles it");
+        drainPickerActions(app); // Invokes the actual accepted-selection -> loadVideoFile -> startMovie path.
+        ReadyMovie next = (ReadyMovie) get(app, "video");
+        check(old.stopped && next != old && next.played, "Accepted next clip must replace and start its pipeline");
+        check(!(boolean) get(app, "paused"), "New clip must not inherit manual/end-of-export pause");
+        check(get(app, "pausedFrame") == null && !(boolean) get(app, "freezeManual") && (int) get(app, "freezeFramesLeft") == 0,
+                "New clip must clear paused/frozen frame state");
+        check(!(boolean) get(app, "movieReady") && (long) get(app, "videoLoadStartedNanos") != 0,
+                "New clip gets its own first-frame load window");
+        check(next.available() && !(boolean) get(app, "paused"), "draw must be allowed to read the ready native frame");
+        Method update = VideoGlitcher.class.getDeclaredMethod("updateMovieFrame", processing.video.Movie.class); update.setAccessible(true); update.invoke(app, next);
+        set(app, "videoLoadStartedNanos", System.nanoTime() - 16_000_000_000L);
+        invoke(app, "checkVideoLoadTimeout");
+        check(next.reads == 1 && (boolean) get(app, "movieReady") && !next.stopped && get(app, "video") == next,
+                "A successfully decoded replacement clip must not be discarded by the timeout");
+    }
+
+    private static final class TestVideoGlitcher extends VideoGlitcher {
+        @Override processing.video.Movie createMovie(String source) {
+            try { return readyMovie(); } catch (Exception exception) { throw new RuntimeException(exception); }
+        }
+    }
+    private static final class ReadyMovie extends processing.video.Movie {
+        boolean stopped; boolean played; int reads;
+        private ReadyMovie() { super(null, "unused"); }
+        @Override public boolean available() { return true; }
+        @Override public void read() { reads++; }
+        @Override public void stop() { stopped = true; }
+        @Override public void pause() { }
+        @Override public void play() { played = true; }
+        @Override public void loop() { played = true; }
+        @Override public boolean isPlaying() { return false; }
+        @Override public float time() { return 3; }
+        @Override public float duration() { return 3; }
+        @Override public processing.core.PImage get() { return new processing.core.PImage(4, 4); }
+    }
+    private static ReadyMovie readyMovie() throws Exception {
+        // Bypass only native Movie construction; every application transition above is the real method.
+        Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe"); field.setAccessible(true);
+        ReadyMovie movie = (ReadyMovie) ((sun.misc.Unsafe) field.get(null)).allocateInstance(ReadyMovie.class);
+        movie.width = 4; movie.height = 4;
+        return movie;
+    }
+    private static void invoke(VideoGlitcher app, String method) throws Exception {
+        Method m = VideoGlitcher.class.getDeclaredMethod(method); m.setAccessible(true); m.invoke(app);
+    }
+
     private static void testSmokeTimeout(Path directory) throws Exception {
         String java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java").toString();
         Process child = new ProcessBuilder(java, "-Djava.awt.headless=true", "-cp", System.getProperty("java.class.path"),

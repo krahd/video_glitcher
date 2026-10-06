@@ -1270,7 +1270,11 @@ public class VideoGlitcher extends PApplet {
                 return;
             }
             releaseVideo();
-            
+
+            // A newly accepted clip starts previewing, regardless of the old clip's pause/end state.
+            // This runs only after any pending export finishes, never on picker open or cancel.
+            paused = false;
+            videoLoadStartedNanos = 0;
             movieReady = false;
             frozenFrame = null;
             pausedFrame = null;
@@ -1305,7 +1309,7 @@ public class VideoGlitcher extends PApplet {
             videoLoadStartedNanos = System.nanoTime();
             println("Loading video " + sourceLabel + ": " + source);
             try {
-                video = new Movie(this, source);
+                video = createMovie(source);
                 startPlayback();
                 setStatusMessage("Status: loading " + currentVideoName + " via " + sourceLabel);
             } catch (RuntimeException exception) {
@@ -1320,6 +1324,11 @@ public class VideoGlitcher extends PApplet {
             }
         }
         
+        // Narrow construction seam for state tests that do not launch a native video pipeline.
+        Movie createMovie(String source) {
+            return new Movie(this, source);
+        }
+
         private void checkVideoLoadTimeout() {
             if (video != null && VideoGlitcherLogic.videoLoadTimedOut(videoLoadStartedNanos, System.nanoTime(), movieReady)) {
                 videoLoadStartedNanos = 0;

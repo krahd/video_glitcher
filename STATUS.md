@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 16:36
+Last updated: 2026-10-06 16:54
 
 ## Project purpose
 
@@ -119,6 +119,7 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 ## Recent changes
 
 - Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
+- Fixed repeated loading after a manual pause or completed full export: only an accepted clip that begins loading resets pause/frame/readiness state. Cancelling selection keeps the previous paused clip unchanged. Both paths have workflow regressions; native repeats are pending.
 - Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus no-replace hard-link publication protects previous outputs and source files, including a destination created during encoding.
 - Added discard/cancel (`X`), frame counts, bounded encoder diagnostics/finalisation, actionable errors and normal-exit cleanup.
 - Added isolated Linux library-link materialisation with safety/payload-hash validation and dependency preflight. No vendored payloads, system libraries or redistribution clearance are changed. Linux uses Swing pickers; ffmpeg receives the original loader environment.
@@ -182,4 +183,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
 - No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
 
-Last updated: 2026-10-06 16:36
+Last updated: 2026-10-06 16:54

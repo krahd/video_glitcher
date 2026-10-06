@@ -71,3 +71,11 @@ Normal GUI testing at `b87671b` used the materialised runtime, bundled GStreamer
 These are focused Linux checks with temporary QA dependencies, not full supported-platform acceptance or proof of a shippable Linux bundle. Optional TLS/WebRTC plugin warnings (including missing OpenSSL 1.1) and internal GStreamer callback warnings remain. A clean, reproducible, provenance-reviewed native runtime is still required for delivery; all macOS/Windows native checks remain open.
 
 At `b87671b`, PR CI passed while duplicate push CI exposed a scheduling-sensitive four-frame startup queue. The final revision uses a bounded queue targeting 64 MiB (at least one frame, at most 48) and includes a delayed-encoder-start regression that verifies all 24 frames are preserved. Overload remains an explicit failure, never silent dropping. Final exact-head CI and independent review of the runtime/startup-buffer delta must be checked before moving the draft forward.
+
+## Repeated-load review repair
+
+Independent review of `97e15a6` found that loading another clip after manual pause or completed full export inherited `paused=true`, preventing the draw loop from consuming its first frame and eventually producing a false decode timeout. The accepted-load transition now resets pause and starts a fresh first-frame window, only after any pending export completes. Opening/cancelling the picker leaves the old state unchanged.
+
+Workflow tests invoke actual pause/full-export-completion and queued selection/load methods, replacing only native Movie construction. They verify cancellation preservation, old-pipeline stop, automatic next-clip playback, cleared paused/frozen caches, frame readiness and no false timeout after 16 seconds. Native repeated-use checks are pending.
+
+The separate `Native object has been disposed` warning was inspected in the bundled library bytecode. Its stack terminates in `Movie$NewSampleListener` calling `Buffer.unmap` after the GL buffer-sink handoff. It was observed even with application frame reads confined to draw. That locates the failing library boundary but does not establish the root cause or prove a fix; it is tracked separately from the deterministic pause-state defect. No third-party binary or undocumented global video flag was changed to suppress it.
