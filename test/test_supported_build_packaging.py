@@ -6,6 +6,8 @@ import json
 import os
 import shutil
 import stat
+import subprocess
+import sys
 import tempfile
 import unittest
 import warnings
@@ -391,6 +393,41 @@ class SupportedBuildPackagingTests(unittest.TestCase):
                         archive.writestr(name, b"fixture")
                 with zipfile.ZipFile(stream) as archive, self.assertRaisesRegex(ValueError, "path component"):
                     module.checked_entries(archive, set(actual), 100)
+
+
+    @unittest.skipUnless(module.supports_safe_staging(), "POSIX-only staging")
+    def test_selected_checkout_root_alias_accepts_lexical_and_canonical_parent(self):
+        alias = self.root / "checkout-alias"
+        alias.symlink_to(self.repo, target_is_directory=True)
+        for output in (alias / "dist/alias-output", self.repo / "dist/canonical-output"):
+            with self.subTest(output=output):
+                result = module.stage_supported_build(alias, self.source, output, "fixture", internal_provenance_only=True)
+                self.assertEqual(result["redistributionClearance"], "not-cleared")
+                self.assertTrue((self.repo / "dist" / output.name / "support-manifest.json").is_file())
+        # This allowance is for the selected root only, never dist aliases.
+        nested = self.repo / "dist/alias"
+        nested.symlink_to(self.repo / "dist", target_is_directory=True)
+        with self.assertRaises(ValueError):
+            module.stage_supported_build(alias, self.source, alias / "dist/alias/forbidden", "fixture", internal_provenance_only=True)
+
+    @unittest.skipUnless(module.supports_safe_staging() and shutil.which("git"), "POSIX staging with git")
+    def test_normal_cli_from_symlink_spelled_checkout(self):
+        scripts = self.repo / "scripts"
+        scripts.mkdir()
+        shutil.copyfile(REPO / "scripts/package_supported_build.py", scripts / "package_supported_build.py")
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.repo), "add", "lib", "packaging", "scripts"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=Synthetic Fixture", "-c", "user.email=fixture@example.invalid",
+                        "commit", "-q", "-m", "Owned synthetic packaging fixture"], check=True, capture_output=True)
+        alias = self.root / "checkout-alias"
+        alias.symlink_to(self.repo, target_is_directory=True)
+        result = subprocess.run([sys.executable, str(alias / "scripts/package_supported_build.py"), "--version", "fixture",
+                                 "--source", "dist/inputs", "--output", "dist/cli-output", "--internal-provenance-only"],
+                                cwd=alias, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "internal-staging-complete")
+        manifest = json.loads((self.repo / "dist/cli-output/support-manifest.json").read_text())
+        self.assertIsNone(manifest["archiveSourceCommit"])
 
 
 

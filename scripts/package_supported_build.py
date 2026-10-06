@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Inspect and stage existing ZIPs for INTERNAL provenance work, never publication.
 
-The final manifest is the completion marker. Existing output paths are always
-refused; a failed attempt may leave a partial directory for inspection. Nothing
+Use only a trusted checkout/dist with cooperative writers. This is not a
+filesystem security sandbox against other same-user processes replacing/moving
+directories. Identity checks are point-in-time, not atomic namespace guarantees.
+The final valid manifest is the completion marker. Existing output paths are
+refused at the checked/claimed name; a failed attempt may leave a partial directory for inspection. Nothing
 in an existing destination is deleted, replaced or treated as a ready build.
 """
 from __future__ import annotations
@@ -234,13 +237,16 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str, 
         raise RuntimeError("Release archives are not cleared for paid redistribution; see docs/REDISTRIBUTION-AUDIT.md")
     if not supports_safe_staging():
         raise RuntimeError("Internal staging requires POSIX directory-fd/no-follow capabilities; staging is unsupported on this platform")
+    repo_spelling = repo.absolute()
     repo = repo.resolve(strict=True)
     source = source.resolve(strict=True)
     output = output.absolute()
-    generated_root = repo / "dist"
+    # Canonicalise only the selected trusted repository root. macOS may spell
+    # /private/var as /var; never resolve dist or an output component to accept it.
+    permitted_parents = {repo / "dist", repo_spelling / "dist"}
     # A single new child is enough for internal inspection. No recursive parent
     # creation and no symlink-bearing intermediate path are supported.
-    if output.parent != generated_root or output.name in ("", ".", ".."):
+    if output.parent not in permitted_parents or output.name in ("", ".", ".."):
         raise ValueError("Output must be a NEW immediate child directory of this checkout's existing dist/ directory")
     if not version or any(ord(c) < 32 for c in version):
         raise ValueError("Version must be a non-empty single-line label")
@@ -306,8 +312,9 @@ def stage_supported_build(repo: Path, source: Path, output: Path, version: str, 
             "Linux native-link/dependency gaps and all platform acceptance/licensing gates remain.\n"
             "See docs/LOCAL-EVALUATION.md and docs/REDISTRIBUTION-AUDIT.md in the source checkout.\n"
             "Only a valid, complete support-manifest.json with matching checksums marks successful internal staging.\n")
-        # Writes remain anchored even after a rename. Detect changed public names
-        # before reporting success; never clean up somebody else's replacement.
+        # Writes remain anchored even after a rename. These identity checks are
+        # point-in-time: unrelated same-user namespace substitution is outside
+        # the trusted/cooperative-writer contract. Never remove a replacement.
         assert_directory_identity(repo_fd, "dist", dist_fd)
         assert_directory_identity(dist_fd, output.name, output_fd)
         write_text_at(output_fd, "support-manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")

@@ -4,13 +4,19 @@
 
 ## Safe internal use
 
-Use Python 3.11+, a POSIX host exposing directory-relative file operations and no-follow flags, and a **complete matching source checkout**, including its tracked dependency files. Internal staging fails closed on Windows or any runtime without those capabilities; Windows archive-inspection and launcher tests are separate from staging support. The three already-existing ZIPs must be in a separate input directory or directly under `dist/`. The output must be a **new immediate child** of this checkout's existing, non-symlink `dist/` directory. Nested output paths and symlink-bearing output parents are unsupported. No download, install, archive extraction or executable launch occurs.
+Use Python 3.11+, a POSIX host exposing directory-relative file operations and no-follow flags, and a **complete matching source checkout**, including its tracked dependency files. Internal staging fails closed on Windows or any runtime without those capabilities; Windows archive-inspection and launcher tests are separate from staging support. The three already-existing ZIPs must be in a separate input directory or directly under `dist/`. The output must be a **new immediate child** of this checkout's existing, non-symlink `dist/` directory. Nested output paths and symlink-bearing output parents are unsupported. Only the selected repository root itself may use its trusted lexical/canonical spelling (for example macOS `/var` and `/private/var`); the guard never resolves `dist` or the output leaf to accept an alias. No download, install, archive extraction or executable launch occurs.
 
 ```sh
 python3 scripts/package_supported_build.py --version v1.1.3 --source dist --output dist/internal-inspection-01 --internal-provenance-only
 ```
 
-Do not remove an existing directory just to rerun this command. Choose a different output name. Existing files, empty/non-empty directories and symlink destinations are refused. A destination created by another process during preflight is also preserved. Source/dist/output directory handles remain open through inspection and copying. Creation and every write use those handles with no-follow/exclusive flags, so replacing path names cannot redirect writes to a new symlink target. Changed dist/output identities are refused before completion; partial data may remain in the original directory if another process moved it. The tool does not control other processes renaming directories. A failed copy may leave partial files for inspection; they are not reused or recursively deleted by the tool.
+Do not remove an existing directory just to rerun this command. Choose a different output name. Existing files, empty/non-empty directories and symlink destinations are refused. A destination created by another process during preflight is also preserved. Source/dist/output directory handles remain open through inspection and copying. Creation and every write use those handles with no-follow/exclusive flags, so replacing path names cannot redirect writes to a new symlink target. Point-in-time checks refuse replacements they observe; partial data may remain in the original directory if another process moved it. A failed copy may leave partial files for inspection; they are not reused or recursively deleted by the tool.
+
+## Trust and concurrency contract
+
+Use this tool only in a trusted checkout with trusted `dist/` parents. Competing cooperative staging attempts may claim the same new name; exclusive creation ensures only one can claim it. Do not run it while another same-user process is renaming, replacing or substituting the checkout, `dist/` or output directory.
+
+Descriptor-relative no-follow operations prevent writes being redirected by the tested symlink replacements. They are **not a filesystem security sandbox**. Portable mkdir/open cannot atomically prove ownership of a directory against an arbitrary same-user replacement between those operations. Likewise, a rename after the final identity check can move the held output elsewhere or make the reported path stale. The tool does not promise absolute post-rename containment, detection of every replacement, or atomic namespace publication. It never deletes a replacement to recover. Recheck the completed manifest/checksums in the trusted output before using an internal result.
 
 ## What is checked
 
