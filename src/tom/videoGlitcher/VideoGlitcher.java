@@ -4,12 +4,16 @@ import processing.core.*;
 import processing.data.IntList;
 import processing.event.MouseEvent;
 import processing.video.*;
+import processing.opengl.PGraphicsOpenGL;
+import processing.opengl.Texture;
 import controlP5.*;
 
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class VideoGlitcher extends PApplet {
     
@@ -77,6 +81,9 @@ public class VideoGlitcher extends PApplet {
     
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
+        // Bundled GStreamer libraries must not be loaded into GTK's native file chooser.
+        // Swing keeps Linux save/load dialogs in the Java UI without that native ABI collision.
+        if (PApplet.platform == LINUX) useNativeSelect = false;
         if (launchOptions.smokeTest()) {
             PApplet.main(new String[] { VideoGlitcher.class.getName() });
             return;
@@ -93,6 +100,11 @@ public class VideoGlitcher extends PApplet {
     
     private boolean movieReady = false;
     private boolean exporting = false;
+    private CompletableFuture<String> pendingExportFinish;
+    private ExportMode finishingExportMode = ExportMode.NONE;
+    private String finishingExportFilename;
+    private File pendingVideoFile;
+    private final ConcurrentLinkedQueue<Runnable> pendingGuiActions = new ConcurrentLinkedQueue<>();
     private boolean paused = false;
     private boolean loopPlayback = true;
     private boolean glitchEnabled = false;
@@ -112,6 +124,9 @@ public class VideoGlitcher extends PApplet {
     private boolean freezeManual = false;
     private boolean selectingVideo = false;
     private boolean selectingProcessOutput = false;
+    private boolean selectingInteractiveOutput = false;
+    private boolean comparingSource = false;
+    private boolean showGuide = false;
     private ExportMode exportMode = ExportMode.NONE;
     private boolean exportReachedPlaybackEnd = false;
     
@@ -186,6 +201,7 @@ public class VideoGlitcher extends PApplet {
     private String statusMessage = "Status: no video loaded";
     
     private boolean triedVideoUriFallback = false;
+    private long videoLoadStartedNanos;
     private boolean smokeExportStarted = false;
     private int smokeExportFramesSaved = 0;
     
@@ -240,13 +256,17 @@ public class VideoGlitcher extends PApplet {
     @Override
     public void draw() {
         ensureMenuBarHidden();
-        
+        Runnable guiAction;
+        while ((guiAction = pendingGuiActions.poll()) != null) guiAction.run();
+        completePendingExport();
+        cp5.setVisible(showGUI && !showGuide);
         background(0);
         
         if (video != null && !paused && video.available()) {
             updateMovieFrame(video);
         }
         
+        checkVideoLoadTimeout();
         normalizeRanges();
         liveRenderSettings = captureCurrentRenderSettings();
         updatePlaybackEffects();
@@ -289,10 +309,17 @@ public class VideoGlitcher extends PApplet {
             saveExportFrame();
         }
         
+        // Source comparison and guide are preview-only; never enter the exported pixels or ghost cache.
+        if (!focused) comparingSource = false;
+        if (comparingSource && movieReady && video != null) {
+            background(0);
+            image(paused && pausedFrame != null ? pausedFrame : video, drawX, drawY, drawW, drawH);
+        }
         if (showHUD)
             drawHUD();
-        if (showGUI)
+        if (showGUI && !showGuide)
             drawGui();
+        if (showGuide) drawWorkflowGuide();
         
         if (launchOptions.smokeTest()) {
             runSmokeCycle();
@@ -303,6 +330,16 @@ public class VideoGlitcher extends PApplet {
     
     @Override
     public void keyPressed() {
+        if (key == '?' || (showGuide && key == ESC)) {
+            showGuide = !showGuide;
+            key = 0;
+            return;
+        }
+        if ((key == 'x' || key == 'X') && (exporting || pendingExportFinish != null)) { cancelExport(); return; }
+        if (showGuide && (key == 'e' || key == 'E') && exporting) { stopExport(); return; }
+        if (showGuide) return;
+        if (selectingVideo || selectingProcessOutput || selectingInteractiveOutput) return;
+        if (key == 'c' || key == 'C') { comparingSource = true; return; }
         if (isFullProcessExportActive()) {
             if (key == 'e' || key == 'E') {
                 stopExport();
@@ -326,12 +363,17 @@ public class VideoGlitcher extends PApplet {
             promptForVideo();
         } else if (key == 'f' || key == 'F') {
             freezeManual = !freezeManual;
-            if (freezeManual && frozenFrame == null && movieReady) {
-                frozenFrame = get((int) drawX, (int) drawY, max(1, (int) drawW), max(1, (int) drawH));
+            if (freezeManual && movieReady) {
+                // The last completed render was captured before the HUD/controls were drawn.
+                // Reading the displayed framebuffer here can accidentally freeze GUI pixels into exports.
+                frozenFrame = previousFrame == null ? snapshotSourceFrame(video)
+                        : previousFrame.get((int) drawX, (int) drawY, max(1, (int) drawW), max(1, (int) drawH));
             }
         } else if (key == 'h' || key == 'H') {
             showHUD = !showHUD;
             showGUI = showHUD;
+        } else if (key == 'u' || key == 'U') {
+            showGUI = !showGUI;
         } else if (key == 'g' || key == 'G') {
             toggleGlitching();
         } else if (key == 'e' || key == 'E') {
@@ -347,7 +389,13 @@ public class VideoGlitcher extends PApplet {
     }
     
     @Override
+    public void keyReleased() {
+        if (key == 'c' || key == 'C') comparingSource = false;
+    }
+
+    @Override
     public void mousePressed() {
+        if (showGuide) return;
         if (video == null && !movieReady && !selectingVideo && !isPointerOverGui()) {
             promptForVideo();
         }
@@ -395,7 +443,7 @@ public class VideoGlitcher extends PApplet {
     
     @Override
     public void mouseWheel(MouseEvent event) {
-        if (!showGUI || !isPointerOverGui()) {
+        if (showGuide || !showGUI || !isPointerOverGui()) {
             return;
         }
         
@@ -409,9 +457,8 @@ public class VideoGlitcher extends PApplet {
     }
     
     public void movieEvent(Movie m) {
-        if (!paused) {
-            updateMovieFrame(m);
-        }
+        // draw() exclusively consumes available frames. Reading here as well races the
+        // GStreamer callback with Processing and can dispose a buffer while it is in use.
     }
     
     private void ensureMenuBarHidden() {
@@ -435,7 +482,7 @@ public class VideoGlitcher extends PApplet {
             }
             
             if (paused) {
-                pausedFrame = movie.get();
+                pausedFrame = snapshotSourceFrame(movie);
                 movie.pause();
                 setStatusMessage("Status: paused " + currentVideoName);
                 updatePausePlayButton();
@@ -772,7 +819,8 @@ public class VideoGlitcher extends PApplet {
         }
         
         private int measureGuiContentHeight() {
-            int logicalY = 0;
+            // Matches refreshGuiLayout's 20px inset plus the 24px section heading.
+            int logicalY = 44;
             
             if (compactGuiMode) {
                 logicalY += rowGap;
@@ -1072,7 +1120,7 @@ public class VideoGlitcher extends PApplet {
         }
         
         public void controlEvent(ControlEvent e) {
-            if (isFullProcessExportActive()) {
+            if (showGuide || selectingInteractiveOutput || selectingProcessOutput || isFullProcessExportActive()) {
                 return;
             }
             
@@ -1120,7 +1168,7 @@ public class VideoGlitcher extends PApplet {
             
             video.jump(0);
             if (paused) {
-                pausedFrame = video.get();
+                pausedFrame = snapshotSourceFrame(video);
                 video.pause();
                 setStatusMessage("Status: rewound " + currentVideoName);
             } else {
@@ -1165,14 +1213,14 @@ public class VideoGlitcher extends PApplet {
         }
         
         private void promptForVideo() {
-            if (selectingVideo || selectingProcessOutput || isFullProcessExportActive())
+            if (selectingVideo || selectingProcessOutput || selectingInteractiveOutput || pendingExportFinish != null || isFullProcessExportActive())
                 return;
             selectingVideo = true;
             selectInput("Select a video file:", "videoSelected");
         }
         
         private void promptForProcessOutput() {
-            if (exporting || !movieReady || video == null || selectingProcessOutput) {
+            if (exporting || pendingExportFinish != null || !movieReady || video == null || selectingVideo || selectingInteractiveOutput || selectingProcessOutput) {
                 return;
             }
             
@@ -1182,11 +1230,16 @@ public class VideoGlitcher extends PApplet {
             }
             
             selectingProcessOutput = true;
-            setStatusMessage("Status: choose where to save the processed video");
-            selectOutput("Save processed video as:", "processOutputSelected", new File(exportFilename));
+            setStatusMessage("Status: full clip, silent MP4, preview canvas at 24 fps. Choose a NEW filename.");
+            selectOutput("Save full clip (silent MP4, 24 fps) with a new filename:", "processOutputSelected", new File(exportFilename));
         }
         
         public void processOutputSelected(File selection) {
+            // Native file pickers may call back on the AWT thread. Apply all workflow state on draw().
+            pendingGuiActions.add(() -> acceptProcessOutput(selection));
+        }
+
+        private void acceptProcessOutput(File selection) {
             selectingProcessOutput = false;
             
             if (selection == null) {
@@ -1199,6 +1252,11 @@ public class VideoGlitcher extends PApplet {
         }
         
         public void videoSelected(File selection) {
+            // Native file pickers may call back on the AWT thread. Apply all workflow state on draw().
+            pendingGuiActions.add(() -> acceptVideoSelection(selection));
+        }
+
+        private void acceptVideoSelection(File selection) {
             selectingVideo = false;
             
             if (selection == null) {
@@ -1211,8 +1269,17 @@ public class VideoGlitcher extends PApplet {
         
         private void loadVideoFile(File file) {
             stopExport();
+            if (pendingExportFinish != null) {
+                pendingVideoFile = file;
+                setStatusMessage("Finishing current export before loading " + file.getName() + ". X discards the export.");
+                return;
+            }
             releaseVideo();
-            
+
+            // A newly accepted clip starts previewing, regardless of the old clip's pause/end state.
+            // This runs only after any pending export finishes, never on picker open or cancel.
+            paused = false;
+            videoLoadStartedNanos = 0;
             movieReady = false;
             frozenFrame = null;
             pausedFrame = null;
@@ -1244,9 +1311,10 @@ public class VideoGlitcher extends PApplet {
             releaseVideo();
             movieReady = false;
             
+            videoLoadStartedNanos = System.nanoTime();
             println("Loading video " + sourceLabel + ": " + source);
             try {
-                video = new Movie(this, source);
+                video = createMovie(source);
                 startPlayback();
                 setStatusMessage("Status: loading " + currentVideoName + " via " + sourceLabel);
             } catch (RuntimeException exception) {
@@ -1261,6 +1329,41 @@ public class VideoGlitcher extends PApplet {
             }
         }
         
+        // Read the displayed GPU texture, not Movie's transient native-buffer/CPU cache.
+        // Movie.get() can return black after Processing has consumed/disposed its buffer list.
+        static PImage snapshotTexture(PGraphicsOpenGL renderer, PImage source) {
+            if (source.width <= 0 || source.height <= 0) return null;
+            PImage snapshot = new PImage(source.width, source.height, ARGB);
+            Texture texture = renderer.getTexture(source);
+            texture.get(snapshot.pixels);
+            snapshot.updatePixels();
+            return snapshot;
+        }
+
+        private PImage snapshotSourceFrame(Movie source) {
+            if (source == null || source.width <= 0 || source.height <= 0) return null;
+            if (g instanceof PGraphicsOpenGL renderer) {
+                return snapshotTexture(renderer, source);
+            }
+            return source.get();
+        }
+
+        // Narrow construction seam for state tests that do not launch a native video pipeline.
+        Movie createMovie(String source) {
+            return new Movie(this, source);
+        }
+
+        private void checkVideoLoadTimeout() {
+            if (video != null && VideoGlitcherLogic.videoLoadTimedOut(videoLoadStartedNanos, System.nanoTime(), movieReady)) {
+                videoLoadStartedNanos = 0;
+                releaseVideo();
+                paused = false;
+                updatePausePlayButton();
+                setStatusMessage("Video did not decode within 15 seconds. Press L to retry another clip; check the native video runtime.");
+                if (launchOptions.smokeTest()) finishSmokeRun(false, "Smoke video decode timed out");
+            }
+        }
+
         private String makeExportFilename(String sourceName) {
             return VideoGlitcherLogic.makeExportFilename(sourceName);
         }
@@ -1287,13 +1390,50 @@ public class VideoGlitcher extends PApplet {
             text("No video loaded", width * 0.5f, height * 0.5f - 20);
             
             textSize(18);
-            text("Click anywhere or press L to load a video", width * 0.5f, height * 0.5f + 20);
+            text("Press L to load a video. Press ? for the workflow guide.", width * 0.5f, height * 0.5f + 20);
+            textSize(14);
+            text("Choose a preset, hold C to compare, then P for a full-clip export.", width * 0.5f, height * 0.5f + 48);
+            text("Exports are silent MP4 at 24 fps, using the preview canvas size.", width * 0.5f, height * 0.5f + 72);
             
             if (selectingVideo) {
-                text("File dialog open...", width * 0.5f, height * 0.5f + 50);
+                text("File dialog open...", width * 0.5f, height * 0.5f + 98);
             }
         }
         
+        private void drawWorkflowGuide() {
+            pushStyle();
+            hint(DISABLE_DEPTH_TEST);
+            fill(12, 15, 20);
+            noStroke();
+            float guideX = max(12, (width - 820) / 2f);
+            float guideY = max(12, (height - 470) / 2f);
+            rect(guideX, guideY, min(820, width - 24), 470, 14);
+            fill(255, 220, 40);
+            textAlign(LEFT, TOP);
+            textSize(22);
+            text("FROM CLIP TO EXPORT", guideX + 24, guideY + 20);
+            fill(240);
+            textSize(14);
+            String guide = "1  LOAD (L): choose a local video. Your source is never edited.\n"
+                + "2  EXPLORE: choose a preset, then adjust the four compact controls.\n"
+                + "3  COMPARE: hold C for the source. Release C to return to effects.\n"
+                + "4  EXPORT: P processes the full clip; E records your live performance.\n\n"
+                + "Subtle: light digital interruptions. Cinematic: balanced bursts and calm.\n"
+                + "Corrupted File / Broken Codec: increasing digital damage. Extreme: dense bursts.\n"
+                + "VHS Decay: tracking tears and colour drift. Old Digicam: smear and column drift.\n"
+                + "Random: explore a new combination. Advanced reveals individual effects.\n\n"
+                + "Output: silent H.264 MP4, 24 fps, preview canvas size including black mattes.\n"
+                + "Effects are random; a full-clip render is not an exact replay of your preview.\n"
+                + "Full-clip mode follows playback time, not frame-accurate offline rendering.\n"
+                + "Output folder must support hard links. Choose a NEW filename on a local drive.\n"
+                + "E / Stop Output keeps a partial recording.\n"
+                + "X cancels before final save. Export errors appear in the status bar.\n\n"
+                + "Press ? or Escape to close this guide. U hides controls; H hides the HUD.";
+            text(guide, guideX + 24, guideY + 60);
+            hint(ENABLE_DEPTH_TEST);
+            popStyle();
+        }
+
         private void drawVideoMask() {
             noStroke();
             fill(0);
@@ -1381,7 +1521,7 @@ public class VideoGlitcher extends PApplet {
             noStroke();
             rect(hudX, hudY, hudW, HUD_HEIGHT, 8);
             
-            fill(0);
+            fill(255);
             textSize(13);
             textAlign(LEFT, TOP);
             
@@ -1392,15 +1532,16 @@ public class VideoGlitcher extends PApplet {
             String gui = showGUI ? "GUI ON" : "GUI OFF";
             String playback = paused ? "PAUSED" : "PLAYING";
             String playbackMode = loopPlayback ? "LOOP" : "ONCE";
-            String summary = "Video: " + currentVideoName
+            String summary = (comparingSource ? "SOURCE COMPARISON (release C) | " : "") + "Video: " + currentVideoName
             + " | Mode: " + mode
             + " | Playback: " + playback
             + " | Repeat: " + playbackMode
             + " | Output: " + exp
             + " | " + gui
-            + " | SPACE play/pause | G glitch | L load | F freeze | H hud | U gui | E export | P process";
+            + " | C compare | ? guide | X cancel output | E live | P full clip";
             
-            text(fitTextToWidth(statusMessage, hudW - 16), hudX + 8, hudY + 6);
+            String progress = exporting && videoExporter != null ? " [" + videoExporter.framesWritten() + " frames / " + nf(videoExporter.framesWritten() / (float) FPS, 0, 1) + "s output]" : "";
+            text(fitTextToWidth(statusMessage + progress, hudW - 16), hudX + 8, hudY + 6);
             text(fitTextToWidth(summary, hudW - 16), hudX + 8, hudY + 23);
         }
         
@@ -1971,7 +2112,7 @@ public class VideoGlitcher extends PApplet {
                     useColumnDrift = preset.useColumnDrift();
                     
                     applyPresetEffectDefaults(name);
-                    
+                    setStatusMessage(name + ": " + VideoGlitcherLogic.presetDescription(name) + " | Hold C to compare; ? for guide");
                     syncGuiValues();
                 }
                 
@@ -2175,9 +2316,44 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 public void startExport() {
-                    if (exporting || !movieReady || video == null)
+                    if (exporting || pendingExportFinish != null || !movieReady || video == null || selectingVideo || selectingProcessOutput || selectingInteractiveOutput)
                         return;
-                    
+                    if (launchOptions.autoExport()) {
+                        startInteractiveExport();
+                        return;
+                    }
+                    selectingInteractiveOutput = true;
+                    setStatusMessage("Status: live recording, silent MP4, preview canvas at 24 fps. Choose a NEW filename.");
+                    selectOutput("Save live recording (silent MP4, 24 fps) with a new filename:", "interactiveOutputSelected", new File(exportFilename));
+                }
+
+                public void interactiveOutputSelected(File selection) {
+            // Native file pickers may call back on the AWT thread. Apply all workflow state on draw().
+            pendingGuiActions.add(() -> acceptInteractiveOutput(selection));
+        }
+
+        private void acceptInteractiveOutput(File selection) {
+                    selectingInteractiveOutput = false;
+                    if (selection == null) {
+                        setStatusMessage("Status: live export cancelled; preview unchanged");
+                        return;
+                    }
+                    exportFilename = normalizeExportOutputPath(selection);
+                    startInteractiveExport();
+                }
+
+                private boolean prepareExporter() {
+                    try {
+                        videoExporter = FfmpegVideoExporter.start(exportFilename, width, height, FPS);
+                        return true;
+                    } catch (IOException | RuntimeException exception) {
+                        failExport("Export failed: " + exception.getMessage());
+                        return false;
+                    }
+                }
+
+                private void startInteractiveExport() {
+                    if (exporting || pendingExportFinish != null || !movieReady || video == null || !prepareExporter()) return;
                     normalizeRanges();
                     liveRenderSettings = captureCurrentRenderSettings();
                     exportMode = ExportMode.INTERACTIVE;
@@ -2193,13 +2369,6 @@ public class VideoGlitcher extends PApplet {
                     startPlayback();
                     updatePausePlayButton();
                     
-                    try {
-                        videoExporter = FfmpegVideoExporter.start(exportFilename, width, height, FPS);
-                    } catch (IOException | RuntimeException exception) {
-                        failExport("Export failed: " + exception.getMessage());
-                        return;
-                    }
-                    
                     exporting = true;
                     updateExportButtons();
                     setStatusMessage("Status: interactive export to " + exportFilename);
@@ -2207,7 +2376,7 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 private void startFullProcessExport() {
-                    if (exporting || !movieReady || video == null) {
+                    if (exporting || pendingExportFinish != null || !movieReady || video == null || !prepareExporter()) {
                         return;
                     }
                     
@@ -2225,13 +2394,6 @@ public class VideoGlitcher extends PApplet {
                     video.play();
                     updatePausePlayButton();
                     
-                    try {
-                        videoExporter = FfmpegVideoExporter.start(exportFilename, width, height, FPS);
-                    } catch (IOException | RuntimeException exception) {
-                        failExport("Export failed: " + exception.getMessage());
-                        return;
-                    }
-                    
                     exporting = true;
                     updateExportButtons();
                     setStatusMessage("Status: processing full video to " + exportFilename);
@@ -2239,42 +2401,50 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 public void stopExport() {
-                    if (!exporting)
-                        return;
-                    
-                    ExportMode completedMode = exportMode;
+                    if (!exporting) return;
                     exporting = false;
-                    if (videoExporter != null) {
+                    finishingExportMode = exportMode;
+                    finishingExportFilename = exportFilename;
+                    FfmpegVideoExporter finishing = videoExporter;
+                    lockedRenderSettings = null;
+                    pendingExportFinish = CompletableFuture.supplyAsync(() -> {
                         try {
-                            videoExporter.finish();
-                        } catch (IOException exception) {
-                            failExport("Export failed: " + exception.getMessage());
-                            return;
-                        } catch (InterruptedException exception) {
-                            Thread.currentThread().interrupt();
-                            failExport("Export interrupted");
-                            return;
+                            finishing.finish();
+                            return null;
+                        } catch (Exception exception) {
+                            return "Export failed: " + exception.getMessage();
                         }
-                        videoExporter = null;
-                    }
-                    
+                    });
+                    updateExportButtons();
+                    setStatusMessage("Finishing export in background. X cancels before the file is saved.");
+                }
+
+                private void completePendingExport() {
+                    if (pendingExportFinish == null || !pendingExportFinish.isDone()) return;
+                    String error = pendingExportFinish.join();
+                    pendingExportFinish = null;
+                    videoExporter = null;
+                    ExportMode completedMode = finishingExportMode;
+                    finishingExportMode = ExportMode.NONE;
                     exportMode = ExportMode.NONE;
                     exportReachedPlaybackEnd = false;
-                    lockedRenderSettings = null;
-                    if (completedMode == ExportMode.FULL_PROCESS && video != null && !paused) {
-                        startPlayback();
-                    }
+                    if (completedMode == ExportMode.FULL_PROCESS && video != null && !paused) startPlayback();
                     updateExportButtons();
-                    
-                    if (completedMode == ExportMode.FULL_PROCESS) {
-                        setStatusMessage("Status: full-process export finished");
-                        println("Full-process export finished");
-                    } else {
-                        setStatusMessage("Status: interactive export finished");
-                        println("Interactive export finished");
+                    setStatusMessage(error == null ? "Saved export: " + finishingExportFilename : error);
+                    File selectedNextVideo = pendingVideoFile;
+                    pendingVideoFile = null;
+                    if (selectedNextVideo != null && error == null) {
+                        loadVideoFile(selectedNextVideo);
+                        setStatusMessage("Saved export: " + finishingExportFilename + "; loading " + selectedNextVideo.getName());
+                    } else if (selectedNextVideo != null) {
+                        setStatusMessage(error + " New clip not loaded; press L to retry.");
+                    }
+                    if (error != null) println(error);
+                    if (launchOptions.smokeTest() && (launchOptions.autoExport() || launchOptions.autoProcess())) {
+                        finishSmokeRun(error == null, error == null ? "Smoke export completed" : error);
                     }
                 }
-                
+
                 private void saveExportFrame() {
                     loadPixels();
                     try {
@@ -2284,6 +2454,36 @@ public class VideoGlitcher extends PApplet {
                     }
                 }
                 
+                public void cancelExport() {
+                    if (!exporting && pendingExportFinish == null) return;
+                    ExportMode cancelledMode = exportMode;
+                    if (videoExporter != null && !videoExporter.abort()) {
+                        setStatusMessage("The completed file is being saved; cancellation is no longer possible.");
+                        return;
+                    }
+                    pendingExportFinish = null;
+                    finishingExportMode = ExportMode.NONE;
+                    videoExporter = null;
+                    exporting = false;
+                    exportMode = ExportMode.NONE;
+                    exportReachedPlaybackEnd = false;
+                    lockedRenderSettings = null;
+                    if (cancelledMode == ExportMode.FULL_PROCESS && video != null && !paused) startPlayback();
+                    updateExportButtons();
+                    setStatusMessage("Export cancelled. No output saved; source and previous exports unchanged.");
+                    if (pendingVideoFile != null) {
+                        File selectedNextVideo = pendingVideoFile;
+                        pendingVideoFile = null;
+                        loadVideoFile(selectedNextVideo);
+                    }
+                }
+
+                @Override
+                public void dispose() {
+                    if (videoExporter != null) videoExporter.abort();
+                    super.dispose();
+                }
+
                 private void failExport(String message) {
                     ExportMode failedMode = exportMode;
                     exporting = false;
@@ -2299,7 +2499,7 @@ public class VideoGlitcher extends PApplet {
                         startPlayback();
                     }
                     updateExportButtons();
-                    setStatusMessage("Status: export failed");
+                    setStatusMessage(message);
                     println(message);
                     if (launchOptions.smokeTest()) {
                         finishSmokeRun(false, message);
@@ -2307,12 +2507,14 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 private void togglePausePlay() {
-                    if (video == null)
+                    if (video == null) return;
+                    if (!movieReady) {
+                        setStatusMessage("Video is still loading; pause is available after its first frame.");
                         return;
-                    
+                    }
                     paused = !paused;
                     if (paused) {
-                        pausedFrame = video.get();
+                        pausedFrame = snapshotSourceFrame(video);
                         video.pause();
                         setStatusMessage("Status: paused " + currentVideoName);
                     } else {
@@ -2354,16 +2556,14 @@ public class VideoGlitcher extends PApplet {
                     }
                     
                     paused = true;
-                    pausedFrame = video.get();
+                    pausedFrame = snapshotSourceFrame(video);
                     updatePausePlayButton();
                     
                     if (exporting) {
                         exportReachedPlaybackEnd = true;
                         if (exportMode == ExportMode.FULL_PROCESS) {
                             stopExport();
-                            if (launchOptions.smokeTest() && launchOptions.autoProcess()) {
-                                finishSmokeRun(true, "Smoke full-process export completed");
-                            }
+
                         } else {
                             setStatusMessage("Status: interactive export reached end, click Export Stop");
                         }
@@ -2397,10 +2597,10 @@ public class VideoGlitcher extends PApplet {
                 
                 private void updateExportButtons() {
                     if (interactiveExportButton != null) {
-                        interactiveExportButton.setLabel(exportMode == ExportMode.INTERACTIVE ? "Exporting..." : "Export Start");
+                        interactiveExportButton.setLabel(pendingExportFinish != null ? "Saving..." : exportMode == ExportMode.INTERACTIVE ? "Exporting..." : "Export Start");
                     }
                     if (processVideoButton != null) {
-                        processVideoButton.setLabel(exportMode == ExportMode.FULL_PROCESS ? PROCESSING_LABEL : PROCESS_FULL_LABEL);
+                        processVideoButton.setLabel(pendingExportFinish != null ? "Saving... (X to cancel)" : exportMode == ExportMode.FULL_PROCESS ? PROCESSING_LABEL : PROCESS_FULL_LABEL);
                     }
                     if (stopExportButton != null) {
                         stopExportButton.setLabel(exporting ? "Stop Output" : "Export Stop");
@@ -2408,6 +2608,7 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 private void runSmokeCycle() {
+                    if (pendingExportFinish != null) return;
                     if (launchOptions.autoProcess() && movieReady && video != null && !smokeExportStarted) {
                         processVideo();
                         smokeExportStarted = exporting;
@@ -2422,7 +2623,6 @@ public class VideoGlitcher extends PApplet {
                         smokeExportFramesSaved++;
                         if (smokeExportFramesSaved >= launchOptions.exportFrames()) {
                             stopExport();
-                            finishSmokeRun(true, "Smoke export completed");
                             return;
                         }
                     }
@@ -2449,9 +2649,10 @@ public class VideoGlitcher extends PApplet {
                         }
                         
                         if (exporting) {
-                            stopExport();
+                            finishSmokeRun(false, "Smoke run timed out before the requested export frames were saved");
+                            return;
                         }
-                        
+
                         finishSmokeRun(true, "Smoke startup completed");
                     }
                 }
@@ -2459,7 +2660,7 @@ public class VideoGlitcher extends PApplet {
                 private void finishSmokeRun(boolean success, String message) {
                     println(message);
                     if (exporting) {
-                        stopExport();
+                        cancelExport();
                     }
                     paused = true;
                     movieReady = false;

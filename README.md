@@ -10,7 +10,9 @@ Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_gli
 
 Current version: `v1.1.3`
 
-The repository is self-contained and includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows. Export uses `ffmpeg` from your system `PATH`.
+The repository includes the Processing OpenGL jars needed for the `P2D` renderer, plus platform-specific video natives for macOS, Linux, and Windows. Java and `ffmpeg` are external prerequisites; they are not included in the release ZIPs. Export uses system `ffmpeg` with the `libx264` encoder.
+
+The current draft candidate is for local evaluation only. Existing v1.1.3 downloads do not include its workflow repairs. See the [local evaluation checklist](docs/LOCAL-EVALUATION.md) for first-session steps and platform gates; current binaries remain [uncleared for paid redistribution](docs/REDISTRIBUTION-AUDIT.md).
 
 ## Install
 
@@ -56,10 +58,10 @@ For version-pinned downloads and release-specific details, open the release page
 
 ## Requirements
 
-- Java 17 or newer
-- VS Code with Java support
+- Java 21 with desktop/AWT support for the current build/release recipe (JDK 21 for source compilation). Older runtime compatibility is not established.
+- VS Code with Java support is optional; terminal build/run commands are available.
 - Homebrew installs `ffmpeg` and `openjdk` automatically when you use `brew tap krahd/tap && brew install krahd/tap/video_glitcher`
-- `ffmpeg` on your `PATH` if you want MP4 export
+- `ffmpeg` on your `PATH`, built with `libx264`, for MP4 export
 - Native video runtime files are already vendored for `macos-aarch64`, `macos-x86_64`, `linux-amd64`, and `windows-amd64`
 
 ## Build
@@ -179,7 +181,7 @@ These create release archives in `dist/` for each platform, for example:
 
 Each bundle contains the application jar, the required libraries, the platform-specific video natives, and the matching launcher script.
 
-For a supported paid distribution without changing the free GitHub releases, see [Supported builds](docs/SUPPORTED_BUILD.md).
+The current archives are not cleared for paid distribution. The [internal packaging inspection](docs/SUPPORTED_BUILD.md) leaves free release and Homebrew workflows unchanged.
 
 ### Debug launch
 
@@ -204,6 +206,28 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
   tom.videoGlitcher.VideoGlitcher
 ```
 
+## Preview-to-export workflow
+
+Press `?` in the app for a short preset and workflow guide. Start with `Subtle` or `Cinematic`, or choose `VHS Decay` for tracking/colour drift and `Old Digicam` for smear/column drift. Choosing a preset shows its description in the status bar. Hold `C` to compare the source without changing your settings or the recorded output.
+
+Both `E` (live performance) and `P` (full clip) now ask for an output destination. Choose a **new filename**: the app refuses to replace existing files, including the source and previous exports. Encoding happens in a temporary file in the selected folder. A successful background finish saves the MP4; failures and `X` cancellation discard the temporary output. Choose a local output drive with hard-link support; unsupported destinations fail without replacing files. Cancellation remains available until the final publication operation begins. `E` / `Stop Output` still finalises the frames recorded so far, so use `X` when you want to discard them instead. The status bar reports failures with the encoder diagnostic and shows the saved destination on success.
+
+Output remains **silent H.264 MP4 at 24 fps, at the preview canvas size including black mattes**. It is not source-resolution export. Full-clip mode follows real-time playback and can skip source frames under load; it is not a frame-accurate offline renderer. Effects are random, so it does not reproduce the exact random sequence seen during preview. These limits are shown in the in-app guide and remain product gates.
+
+Run the complete local checks (JDK 21, Python 3.11+, ffmpeg and ffprobe):
+
+```sh
+bash scripts/check.sh --with-ffmpeg
+```
+
+The real-encoder regression suite decodes generated output and checks colour, odd-dimension cropping, H.264 codec, 24 fps, frame count, duration, paths with spaces/Unicode, source/existing-file protection, concurrent destination creation, cancellation/retry, missing encoder/folder, invalid frames, empty exports, failed encoders and bounded finalisation, including a live non-reading encoder that fills the input pipe. It does not substitute for Processing/GStreamer GUI tests. CI runs build/logic/packaging checks on Linux, macOS and Windows and real encoder tests on Linux; it does not publish a release.
+
+Pause and completed-export snapshots use GPU texture readback so the source remains visible after native CPU buffers have been consumed. Manual freeze uses the pre-GUI video frame. The repeated-load regression covers loading another clip after pause or completed export, while cancellation preserves the current clip. On a graphical Linux/macOS development desktop, `bash scripts/check-gpu-snapshot.sh` runs the separate OpenGL snapshot regression after the normal build; headless CI does not claim that check.
+
+For a built Linux source checkout, run `bash scripts/run-linux.sh` (accepts existing CLI/smoke flags; requires Python 3). It validates/materialises imported runtime links in a temporary tree and preflights dependencies without changing system libraries. The existing bundle requires `libffi.so.7`, which is absent on some current distributions; the launcher then fails with a specific message. Use a compatible, provenance-reviewed runtime rather than aliasing an incompatible ABI. `VIDEO_GLITCHER_NATIVE_DIR` can point to a separately prepared runtime. The native-runtime and redistribution gates remain open; see the candidate report.
+
+See [candidate validation and remaining product gates](docs/PRODUCT-CANDIDATE-2026-10-06.md). The [paid redistribution hold](docs/REDISTRIBUTION-AUDIT.md) remains in force.
+
 ## Controls
 
 - Click background: open the file picker when no video is loaded
@@ -213,7 +237,10 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 - `F`: toggle freeze mode
 - `H`: show or hide the HUD
 - `U`: show or hide the GUI
-- `E`: start or stop live interactive export
+- `C` (hold): compare the source; release to return to effects
+- `?`: show or close the workflow/preset guide (`Escape` also closes the guide)
+- `X`: cancel the current export and discard its output
+- `E`: choose a new filename and start, or stop/finalise live interactive export
 - `P`: open a save dialog, then process the full clip from start to finish with the current settings
 - `S`: save a frame as PNG
 - `Up`: increase glitch intensity

@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-02 23:27
+Last updated: 2026-10-07 03:17
 
 ## Project purpose
 
@@ -27,7 +27,9 @@ The GUI includes compact/full modes, preset buttons, high-level digital/analogue
 
 ## Active focus
 
-Current focus is maintaining a reliable cross-platform Processing/video runtime, preserving release-bundle and Homebrew distribution workflows, keeping smoke tests useful for runtime/export validation, and ensuring real-time preview/export behaviour stays aligned with GUI settings.
+Current focus is the preview-to-export product candidate and bounded local-evaluation packaging audit: safe internal staging, truthful archive provenance, argument-preserving launchers and a concrete first-session/platform checklist. Existing release assets and release/Homebrew workflows remain unchanged. See `docs/LOCAL-EVALUATION.md`. The paid redistribution hold remains in force; this is not a cleared or validated paid product. See `docs/PRODUCT-CANDIDATE-2026-10-06.md`.
+
+Documentation publication through `.github/workflows/pages.yml` is manual-only (`workflow_dispatch`). The main-branch push trigger has been removed; the deployment job, permissions and concurrency settings are preserved. Main pushes continue to run build/export regression CI. Release-bundle and Homebrew workflows remain tag/manual-only and unchanged. Source integration does not establish native desktop acceptance, licensing clearance or permission to release or publish the documentation site.
 
 ## Architecture overview
 
@@ -95,8 +97,8 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 ## Configuration and environment variables
 
-- Java 17 or newer is required.
-- `ffmpeg` must be available on `PATH` for MP4 export.
+- Java 21 with desktop/AWT support is the documented current build/release contract; source compilation uses JDK 21. Release CI does not target Java 17. Python 3.11+ is required for internal inspection/tests.
+- System `ffmpeg` with the `libx264` encoder must be available on `PATH` for MP4 export. Neither Java nor ffmpeg is bundled in the ZIP release recipe.
 - GStreamer native paths are supplied through Java system properties, e.g. `gstreamer.library.path` and `gstreamer.plugin.path`.
 - Homebrew installs `ffmpeg` and `openjdk` automatically when using the tap formula.
 
@@ -118,6 +120,13 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 ## Recent changes
 
+- Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
+- Fixed repeated loading after a manual pause or completed full export: only an accepted clip that begins loading resets pause/frame/readiness state. Cancelling selection keeps the previous paused clip unchanged. Both paths have workflow regressions and passed native repeats at `f199d6b`, including picker cancellation preservation. A separately reproduced black pause snapshot now uses GPU texture readback. Desktop GPU regression and actual colour-bar pause/end/freeze/cancel/reload checks passed at `eb7ea12`.
+- Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus no-replace hard-link publication protects previous outputs and source files, including a destination created during encoding.
+- Added discard/cancel (`X`), frame counts, bounded encoder diagnostics/finalisation, actionable errors and normal-exit cleanup.
+- Added isolated Linux library-link materialisation with safety/payload-hash validation and dependency preflight. No vendored payloads, system libraries or redistribution clearance are changed. Linux uses Swing pickers; ffmpeg receives the original loader environment.
+- Fixed HUD contrast and the documented `U` preview shortcut; added real decoded-output and failure regression tests plus non-publishing CI.
+
 - README currently documents version `v1.1.3`.
 - Homebrew install path uses `krahd/tap` and formula name `video_glitcher`.
 - The Homebrew formula snapshot has been renamed to `Formula/video_glitcher.rb`.
@@ -128,11 +137,17 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 Automated coverage targets pure Java logic extracted from the fullscreen Processing sketch, including export filename generation, video-fit calculations, range normalisation, glitch state transitions, and ffmpeg export setup.
 
-No tests were run while creating this documentation-only status snapshot.
+On 6 October 2026, `bash scripts/check.sh --with-ffmpeg` passed on Linux x86_64 with OpenJDK 21 and ffmpeg 7.1.5: full Java app compilation, Java logic tests, 12 Python checks (packaging and Linux link safety) and 93 real-encoder integration checks. `git diff --check` passed. Output checks decode a generated MP4 and verify pixels/cropping, codec, frame count, frame rate and duration. Failure tests exercise no-clobber publication, cancellation/retry and encoder failures. New PR CI covers Linux/macOS/Windows build/logic and Linux real encoding; exact-head remote results remain pending. Workflow tests also cover native-picker handoff, asynchronous completion filenames, guide-time cancel and failing smoke timeouts. Normal-launch Linux screenshots at `83d9cd5` verified all four compact sliders, opaque guide, guide open/close, U hide/show and clean exit. The original Linux runtime failed playback; an isolated validated runtime subsequently passed generated-H.264 playback, full export, existing-output rejection and live cancellation at `b87671b`. This depended on a temporary graphical JRE and libffi7 compatibility package, not a shipped/cleared bundle. macOS/Windows native acceptance remains pending. Independent review and exact-head CI at `83d9cd5` pass.
 
 Manual/runtime validation remains important because fullscreen Processing behaviour, native video library compatibility, GUI interaction, and ffmpeg export depend on the local platform/runtime environment.
 
 ## Known issues, risks, and limitations
+
+- Paid binary redistribution remains blocked by the codec/runtime provenance hold in `docs/REDISTRIBUTION-AUDIT.md`; project-level licence clarification remains separate. Existing rights/notices are unchanged.
+- Full-process capture remains real-time, random and preview-canvas-sized at 24 fps without audio; it is not frame-accurate/source-resolution offline export.
+- Native Linux generated-clip playback failed. The bundle contains 155 small library-link placeholder files; examples `libgstreamer-1.0.so` and `libharfbuzz.so.0` are Git mode 100644 text rather than symlinks. See the candidate report for loader diagnostics. The source launcher now materialises and preflights the runtime; its loader override is scoped to Java and removed/restored for system ffmpeg.
+- A 15-second first-frame decode timeout is now implemented. Isolated runtime link repair enabled generated-H.264 playback with a temporary official libffi7 compatibility package. The default Debian 13 host lacks libffi.so.7; a reviewed compatible runtime remains a delivery gate. Linux Swing picker and scoped ffmpeg environment fixes passed full-export, existing-output rejection and guide-time live cancellation at `b87671b`. Optional native-plugin and internal callback warnings remain; all macOS/Windows native interaction checks and deliverable-runtime acceptance remain pending.
+- Encoder writes/close and finalisation now run off the UI thread behind a bounded queue/deadline. Queue overload fails explicitly. Publication requires hard-link-capable storage; unresponsive filesystem operations can still delay background save completion.
 
 - Runtime video playback depends on bundled platform-specific Processing video/GStreamer native files.
 - MP4 export depends on system `ffmpeg` availability.
@@ -148,9 +163,9 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 ## Next steps
 
-1. Run logic tests after the next source change.
-2. Run platform smoke tests before the next release.
-3. Verify Homebrew formula rendering and release asset names before tagging.
+1. Preserve the accepted application/export safeguards and bounded packaging contract. Code/test head `c598964b0b299535acb75862c10ef5d3d8f65104` has green exact-head CI and independent packaging review; neither supplies new native desktop or licensing acceptance.
+2. Test normal-launch GUI interactions and native load/live/full-process exports on each supported desktop.
+3. Resolve redistribution/project-licence gates and establish editor-valued workflow benefit before any paid offer. No release or store upload is authorised in this work.
 
 ## Longer-term steps
 
@@ -162,16 +177,19 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 - The project remains a plain Java Processing application rather than a `.pde`-only sketch.
 - Pure logic should stay extracted where practical so it can be tested without launching Processing.
-- Distribution relies on self-contained release bundles plus a Homebrew formula for supported platforms.
+- Historical distribution uses platform ZIPs plus a Homebrew formula. ZIPs require external Java and ffmpeg; native acceptance and redistribution clearance remain separate gates.
 
----
+## Internal packaging/evaluation audit
 
-Last updated: 2026-05-07 00:15
+- Read-only follow-up inventories the 13 shipped dependency JARs in `docs/JAR-PROVENANCE-2026-10-06.json`: ten repository-byte identities verified, three tool-limited, zero upstream artifact hashes verified. Official JogAmp tag targets agree with retrieved manifest claims; two macOS JAR listing sizes differ, with reason unknown. LGPL metadata/notice observations are review evidence, not a legal conclusion. No dependency is changed or executed.
 
-## Supported-build distribution layer
+- `scripts/package_supported_build.py` requires `--internal-provenance-only`, a complete matching checkout and a new immediate-child destination under an existing non-symlink `dist/`. Staging requires POSIX directory-fd/no-follow capabilities and fails closed on Windows/unsupported runtimes. It never recursively deletes or replaces an existing destination. Concurrent destination claims, symlinks, untracked/archive-extra payloads, path traversal, duplicate paths, payload mismatches and malformed class JARs are refused. Failed copies remain partial and cannot be reused as success.
+- Independent packaging review reproduced output-parent TOCTOU redirection, tracked media/config inclusion and implicit directory case collisions. The repair holds original directory handles and uses exclusive no-follow directory-relative writes; it performs point-in-time identity checks, rejects nested/symlink output parents, restricts native file kinds and validates all implicit archive path components. New owned-fixture regressions exercise replacement before creation and during copying, with outside directories untouched. The contract requires a trusted checkout/dist and cooperative writers; it does not promise protection against arbitrary same-user directory substitution or renames after a check. macOS CI exposed lexical `/var` versus canonical `/private/var` root spelling; the next repair recognises only trusted selected-root spellings without resolving output components. Alias API and actual CLI-from-alias regressions now pass locally. Independent re-review accepted the bounded packaging/claims contract at `c598964b0b299535acb75862c10ef5d3d8f65104`. This is not native desktop, rights or release acceptance.
+- Schema 2 records `stagingCheckoutCommit`; `archiveSourceCommit` remains null/unverified. It no longer misrepresents local HEAD or a requested version label as archive build provenance. The app JAR receives structural checks only; native acceptance and redistribution clearance remain unestablished.
+- Portable launchers now forward CLI/smoke arguments unchanged. Stub process tests verify literal paths/presets with spaces and non-zero exit propagation; they do not exercise Java/GStreamer/GPU startup.
+- README states Java 21, desktop/AWT and external libx264-capable ffmpeg requirements. `docs/LOCAL-EVALUATION.md` covers load, effects, compare, preview, safe full/live export, finding output, discard, overwrite refusal and repeat loading with synthetic media only.
+- `docs/REDISTRIBUTION-AUDIT.md` now inventories native trees, exact recipe scope, media/owner decisions and official upstream licensing sources. No new project licence is chosen, and inherited binaries/notices remain unchanged.
+- Local verification for this audit: 49 Python tests ran, 47 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Before this review repair, exact-head CI passed at `e6a67051af74e8cd58c5d2f5fc83098f5d070f11` in runs `37542960852` and `37542955166`, including full application compilation on Linux/macOS/Windows, 93 encoder checks and workflow tests. The first descriptor repair at `f762bb3` passed Linux, Windows and encoder jobs but failed macOS on the root-spelling bug above; those failed runs are `37543905099` and `37543899732`. The alias correction passed the original macOS cases; its additional canonical test fixture required `self.repo.resolve()` rather than a third unselected spelling. Final code/test head `c598964b0b299535acb75862c10ef5d3d8f65104` passed both exact-head CI runs `37544725979` (PR) and `37544721395` (push). Actual logs confirm full compilation and 49 Python tests on Linux/macOS/Windows: expected skips 1/10/32 respectively. Windows staging fails closed; its supported archive/launcher checks pass. Linux also passes 93 real-encoder assertions, headless workflow tests and 155-link validation. Fresh independent review accepted that exact source under the stated trusted/cooperative contract. No release artifact, installer or external upload was produced.
+- Existing release asset names, release-bundle/Homebrew publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. The documentation-site workflow is now manual-only as described above. Their runtime/rights gaps are documented, not declared solved by these tests.
 
-- Added `scripts/package_supported_build.py` to stage the existing three release ZIPs into a paid-support delivery directory without renaming or modifying the free release artefacts.
-- The packager fails closed when a platform archive is missing and emits `SHA256SUMS`, `support-manifest.json`, and a concise supported-build README.
-- No DRM, licence key, release tag, GitHub asset publication, or Homebrew behaviour is introduced or changed.
-
-Last updated: 2026-10-02 23:27
+Last updated: 2026-10-07 03:17

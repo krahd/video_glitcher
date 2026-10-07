@@ -68,6 +68,24 @@ final class VideoGlitcherLogic {
         return new GlitchState(false, 0, remainingCalmFrames);
     }
 
+    static boolean videoLoadTimedOut(long startedNanos, long nowNanos, boolean ready) {
+        return !ready && startedNanos != 0 && nowNanos - startedNanos >= 15_000_000_000L;
+    }
+
+    static String presetDescription(String name) {
+        return switch (name) {
+            case "Subtle" -> "Light digital interruptions with longer calm gaps";
+            case "Cinematic" -> "Balanced digital bursts and calm passages";
+            case "Corrupted File" -> "Frequent digital damage and block interruptions";
+            case "Broken Codec" -> "Stronger, longer digital break-up";
+            case "Extreme" -> "Dense high-intensity bursts";
+            case "VHS Decay" -> "Tracking tears, head switching and colour drift";
+            case "Old Digicam" -> "Vertical smear and drifting sensor columns";
+            case "Random" -> "A new combination of effect settings";
+            default -> "Custom effect settings";
+        };
+    }
+
     static PresetValues presetForName(String name) {
         switch (name) {
             case "Subtle":

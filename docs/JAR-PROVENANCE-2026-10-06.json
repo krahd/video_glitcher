@@ -1,0 +1,373 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-10-06T23:14:34.559635+00:00",
+  "repositorySourceCommit": "c598964b0b299535acb75862c10ef5d3d8f65104",
+  "scope": "13 dependency JARs selected by current release recipe; read-only ZIP metadata/hash inspection; no execution, installation or native-tree expansion",
+  "summary": {
+    "repoBytesVerified": 10,
+    "toolLimited": 3,
+    "upstreamArtifactHashesVerified": 0,
+    "redistributionCleared": false
+  },
+  "limits": [
+    "Git blob SHA matching ties retrieved bytes to the user repository, not to the upstream supplier.",
+    "Embedded implementation commits match official JogAmp v2.6.0 tag targets for the seven retrieved JogAmp JARs; this is metadata consistency, not binary/source attestation.",
+    "Maven repo1 directory read returned HTTP403 and was not retried through another route. JogAmp checksum-text retrieval was inaccessible; independently available official metadata/index pages were read.",
+    "No application code, runtime payload, release artifact or licence was changed by this audit."
+  ],
+  "records": [
+    {
+      "path": "lib/controlP5/library/controlP5.jar",
+      "gitBlobSha": "b0e142f6bb3ad8817665218a0e66095c62cf2bd8",
+      "expectedBytes": 266506,
+      "status": "repo-bytes-verified",
+      "sha256": "69e160f9cee979d631a4a9674f3d3b2016b66eb3e6f353918cda2b325ef3cc75",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/controlP5/library/controlP5.jar",
+      "manifestFields": {
+        "Created-By": "1.8.0_51-b16 (Oracle Corporation)"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "55d985df5af3ade8da279543f61fa7c58a62a5ef",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "versionStatus": "Repository library.properties says 2.2.6; embedded manifest has no component version. Official artifact identity unverified."
+    },
+    {
+      "path": "lib/core.jar",
+      "gitBlobSha": "0b2953329d198e9700ea68edcfb06039878a7aba",
+      "expectedBytes": 1051393,
+      "status": "bytes-unavailable",
+      "sha256": null,
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/core.jar",
+      "reason": "Supported GitHub contents read supplied empty content for this >1 MiB JAR. Current CI and all 12 historical release runs supplied no retrievable artifacts. No alternate binary route used."
+    },
+    {
+      "path": "lib/processing-opengl/library/gluegen-rt-2.6.0-natives-linux-amd64.jar",
+      "gitBlobSha": "fa9372ff768fb4aca5009927d92bba7872d55824",
+      "expectedBytes": 5638,
+      "status": "repo-bytes-verified",
+      "sha256": "e66437ade89a7c04f6fc29d681bfb7f354f250516f92cf7ad1c568758b2ba39a",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/gluegen-rt-2.6.0-natives-linux-amd64.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "GlueGen Java Bindings Generator",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "GlueGen Run-Time",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b987-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "c06493e448332ace78721f5dfc3718c863783a12",
+        "Implementation-SHA-Sources": "d7d4d9b4ac2337edb70516467403b2f7931567a436932f29399d72e65a91802a",
+        "Implementation-SHA-Classes": "5201b95b2924bbac09519a922e7e7a26930f928ebc7ee0666c442d4a127ddbb5",
+        "Implementation-SHA-Classes-this": "0",
+        "Implementation-SHA-Natives": "c1296426ba7cfb0d9dc7080878b74ece275ccf54e6091a117e639f88e2dc1926",
+        "Implementation-SHA-Natives-this": "c1296426ba7cfb0d9dc7080878b74ece275ccf54e6091a117e639f88e2dc1926",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-Vendor-Id": "com.jogamp",
+        "Implementation-URL": "http://jogamp.org/"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "58d8099e1ca2055663ed95581bd1953514b44163",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/gluegen/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true
+    },
+    {
+      "path": "lib/processing-opengl/library/gluegen-rt-2.6.0-natives-macosx-universal.jar",
+      "gitBlobSha": "a55aab2717493f7eabdb6a79ff70cf776c325e30",
+      "expectedBytes": 21533,
+      "status": "repo-bytes-verified",
+      "sha256": "bc5f22c79d6a04520d571aa9f4a2116400bc05c627621c78e5d324dba968043e",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/gluegen-rt-2.6.0-natives-macosx-universal.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "GlueGen Java Bindings Generator",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "GlueGen Run-Time",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b987-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "c06493e448332ace78721f5dfc3718c863783a12",
+        "Implementation-SHA-Sources": "d7d4d9b4ac2337edb70516467403b2f7931567a436932f29399d72e65a91802a",
+        "Implementation-SHA-Classes": "5201b95b2924bbac09519a922e7e7a26930f928ebc7ee0666c442d4a127ddbb5",
+        "Implementation-SHA-Classes-this": "0",
+        "Implementation-SHA-Natives": "8255743fd43ce87d89470d6a81176cf1188fe889a053427eaaaa9b4d889baa9d",
+        "Implementation-SHA-Natives-this": "8255743fd43ce87d89470d6a81176cf1188fe889a053427eaaaa9b4d889baa9d",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-Vendor-Id": "com.jogamp",
+        "Implementation-URL": "http://jogamp.org/"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "413e3191f14f3448bc2a83edc3be126e4f71a9c3",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/gluegen/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true,
+      "upstreamListingSizeObservation": {
+        "display": "9.5K",
+        "source": "https://jogamp.org/deployment/maven/org/jogamp/gluegen/gluegen-rt/2.6.0/?C=M%3BO%3DA",
+        "status": "apparent size discrepancy against 21,533 repository bytes; rounded listing, not a verified hash conflict; reason unknown"
+      }
+    },
+    {
+      "path": "lib/processing-opengl/library/gluegen-rt-2.6.0-natives-windows-amd64.jar",
+      "gitBlobSha": "d5c1a9fa83285e2a1c4dd9641613e9b2250731c5",
+      "expectedBytes": 23058,
+      "status": "repo-bytes-verified",
+      "sha256": "a1e9ab9af681a3ca756923290e78e83d52320302c60b621335362574b44ff008",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/gluegen-rt-2.6.0-natives-windows-amd64.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "GlueGen Java Bindings Generator",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "GlueGen Run-Time",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b987-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "c06493e448332ace78721f5dfc3718c863783a12",
+        "Implementation-SHA-Sources": "dd837463de04c023b9ca611f42095276b47f1e5cbd0d0ce97f5f91a427f07fb6",
+        "Implementation-SHA-Classes": "5201b95b2924bbac09519a922e7e7a26930f928ebc7ee0666c442d4a127ddbb5",
+        "Implementation-SHA-Classes-this": "0",
+        "Implementation-SHA-Natives": "8f26171638c833b314f23c94c5880d5e86489e42d6534e1277c8d6d1fb8f1a90",
+        "Implementation-SHA-Natives-this": "8f26171638c833b314f23c94c5880d5e86489e42d6534e1277c8d6d1fb8f1a90",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-Vendor-Id": "com.jogamp",
+        "Implementation-URL": "http://jogamp.org/"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "b8198784d08dcffe446edc29ffb60c780f9894ac",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/gluegen/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true
+    },
+    {
+      "path": "lib/processing-opengl/library/gluegen-rt-2.6.0.jar",
+      "gitBlobSha": "06f7a43bd2bd23f09cd9e060647d5f872491b353",
+      "expectedBytes": 415395,
+      "status": "repo-bytes-verified",
+      "sha256": "85a259611d58b64890bd474f33a2f1ca0b551229d5dc580b0eff50b1c8f7efab",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/gluegen-rt-2.6.0.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "GlueGen Java Bindings Generator",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "GlueGen Run-Time",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b987-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "c06493e448332ace78721f5dfc3718c863783a12",
+        "Implementation-SHA-Sources": "d7d4d9b4ac2337edb70516467403b2f7931567a436932f29399d72e65a91802a",
+        "Implementation-SHA-Classes": "5201b95b2924bbac09519a922e7e7a26930f928ebc7ee0666c442d4a127ddbb5",
+        "Implementation-SHA-Classes-this": "5e8a60ee27a31224dad95c6374151a87bdc569e7e6e52640ae0170f3c016f2ab",
+        "Implementation-SHA-Natives": "c1296426ba7cfb0d9dc7080878b74ece275ccf54e6091a117e639f88e2dc1926",
+        "Implementation-SHA-Natives-this": "0",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-Vendor-Id": "com.jogamp",
+        "Implementation-URL": "http://jogamp.org/"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "aed8102866002a3c54a7ea8f8f3670acd0a9f268",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/gluegen/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true
+    },
+    {
+      "path": "lib/processing-opengl/library/jogl-all-2.6.0-natives-linux-amd64.jar",
+      "gitBlobSha": "442b7a5b4c693ac6c4e0bc6b5176ced826e1e941",
+      "expectedBytes": 268868,
+      "status": "repo-bytes-verified",
+      "sha256": "c68b9affbc7a05e9ca7eaefef8176f988145912ab4af7e17997adb490969e4a5",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/jogl-all-2.6.0-natives-linux-amd64.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "Java Bindings for OpenGL API Specification",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "Java Bindings for OpenGL Runtime Environment",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b1548-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "f5964604d3e940c07c3e6af884f06b4eceb08dd4",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-URL": "http://jogamp.org/",
+        "Implementation-Vendor-Id": "com.jogamp"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "a13d626d4577d456ca85ea18ca798c2eefecd607",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/jogl/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true
+    },
+    {
+      "path": "lib/processing-opengl/library/jogl-all-2.6.0-natives-macosx-universal.jar",
+      "gitBlobSha": "0e24fee20b98ff60cc277e8113be6846ac8a735d",
+      "expectedBytes": 669246,
+      "status": "repo-bytes-verified",
+      "sha256": "6cb908a8cc6e9fdc9d13f73b64a4ca1816657fda695cc8381107ea3853a6e4c3",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/jogl-all-2.6.0-natives-macosx-universal.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "Java Bindings for OpenGL API Specification",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "Java Bindings for OpenGL Runtime Environment",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b1548-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "f5964604d3e940c07c3e6af884f06b4eceb08dd4",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-URL": "http://jogamp.org/",
+        "Implementation-Vendor-Id": "com.jogamp"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "0018ec18e52049a907f37d307eac272406d3e64a",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/jogl/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true,
+      "upstreamListingSizeObservation": {
+        "display": "570K",
+        "source": "https://jogamp.org/deployment/maven/org/jogamp/jogl/jogl-all/2.6.0/?C=N%3BO%3DD",
+        "status": "apparent size discrepancy against 669,246 repository bytes; rounded listing, not a verified hash conflict; reason unknown"
+      }
+    },
+    {
+      "path": "lib/processing-opengl/library/jogl-all-2.6.0-natives-windows-amd64.jar",
+      "gitBlobSha": "e33a019769888d8741311c5db1f394cbff3b884a",
+      "expectedBytes": 294864,
+      "status": "repo-bytes-verified",
+      "sha256": "a65a98ff1bddd1386ac7925386f325cdc4d7ffed04f3378bfcf45d24b33d1fc9",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/jogl-all-2.6.0-natives-windows-amd64.jar",
+      "manifestFields": {
+        "Created-By": "21.0.7+6-LTS (Eclipse Adoptium)",
+        "Specification-Title": "Java Bindings for OpenGL API Specification",
+        "Specification-Version": "2.6",
+        "Specification-Vendor": "JogAmp Community",
+        "Implementation-Title": "Java Bindings for OpenGL Runtime Environment",
+        "Implementation-Version": "2.6.0",
+        "Implementation-Build": "2.6-b1548-20250831",
+        "Implementation-Branch": "origin/master",
+        "Implementation-Commit": "f5964604d3e940c07c3e6af884f06b4eceb08dd4",
+        "Implementation-Vendor": "JogAmp Community",
+        "Implementation-URL": "http://jogamp.org/",
+        "Implementation-Vendor-Id": "com.jogamp"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "10db31037bb29cc32fb7e6df9f55e00b5c515a86",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "upstreamTagURL": "https://github.com/sgothel/jogl/tree/v2.6.0",
+      "declaredSourceCommitMatchesOfficialTag": true
+    },
+    {
+      "path": "lib/processing-opengl/library/jogl-all-2.6.0.jar",
+      "gitBlobSha": "9befc8eef0dc34e8dfc7b47ef27eeac2c9dbe2d9",
+      "expectedBytes": 4019603,
+      "status": "bytes-unavailable",
+      "sha256": null,
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/processing-opengl/library/jogl-all-2.6.0.jar",
+      "reason": "Supported GitHub contents read supplied empty content for this >1 MiB JAR. Current CI and all 12 historical release runs supplied no retrievable artifacts. No alternate binary route used."
+    },
+    {
+      "path": "lib/video/library/gst1-java-core-1.4.0.jar",
+      "gitBlobSha": "215f5ab6ea98d9c2f33e92213f13d6ed46d38cbc",
+      "expectedBytes": 608626,
+      "status": "repo-bytes-verified",
+      "sha256": "f0726b2f74753c184abf0281aefe664fdec853ec051b79a5eb64e4e79089ca47",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/video/library/gst1-java-core-1.4.0.jar",
+      "manifestFields": {
+        "Build-Jdk-Spec": "1.8",
+        "Created-By": "Maven Archiver 3.4.0"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "a5ecfb17ab79e54fd8d8b126c0ef6c83d83ed3d2",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF",
+        "META-INF/maven/org.freedesktop.gstreamer/gst1-java-core/pom.properties",
+        "META-INF/maven/org.freedesktop.gstreamer/gst1-java-core/pom.xml"
+      ],
+      "embeddedCoordinates": "org.freedesktop.gstreamer:gst1-java-core:1.4.0",
+      "embeddedPomLicence": "LGPL-3.0-only",
+      "upstreamTagURL": "https://github.com/gstreamer-java/gst1-java-core/tree/v1.4.0",
+      "upstreamTagCommit": "6aa1f3cc93ec276f690fed57f9452bf88101657b"
+    },
+    {
+      "path": "lib/video/library/jna.jar",
+      "gitBlobSha": "77f8c7ae041ee147931525ac1c894905d76428b3",
+      "expectedBytes": 1866196,
+      "status": "bytes-unavailable",
+      "sha256": null,
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/video/library/jna.jar",
+      "reason": "Supported GitHub contents read supplied empty content for this >1 MiB JAR. Current CI and all 12 historical release runs supplied no retrievable artifacts. No alternate binary route used."
+    },
+    {
+      "path": "lib/video/library/video.jar",
+      "gitBlobSha": "76682c2b3d4361bc078c9d7e7733d2510840439a",
+      "expectedBytes": 34428,
+      "status": "repo-bytes-verified",
+      "sha256": "54f25802f8c377a4f6816673b6bc2608c3eac163f968626ffdad90e917164ce3",
+      "upstreamArtifactHashVerification": "not-verified",
+      "licenceClearance": "unestablished; no legal conclusion from metadata or filename absence",
+      "repoSourceURL": "https://github.com/krahd/video_glitcher/blob/c598964b0b299535acb75862c10ef5d3d8f65104/lib/video/library/video.jar",
+      "manifestFields": {
+        "Created-By": "17.0.1+12 (Eclipse Adoptium)"
+      },
+      "separatelyNamedLicenceNoticeFiles": [],
+      "noticeObservation": "No separately named LICENSE/LICENCE/COPYING/NOTICE/AUTHORS/COPYRIGHT entry was found. This is not proof of absent licence terms or non-compliance.",
+      "rawFileSha1": "e18a1494a30f179d29ab3b8b56b7b2368d3e30c6",
+      "metadataEntryPaths": [
+        "META-INF/MANIFEST.MF"
+      ],
+      "versionStatus": "Repository library.properties says 2.2.2; embedded manifest has no component version. Official artifact identity unverified."
+    }
+  ]
+}
