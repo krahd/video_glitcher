@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-07 03:17
+Last updated: 2026-10-07 04:10
 
 ## Project purpose
 
@@ -120,6 +120,8 @@ VS Code tasks also provide build, run, logic-test, smoke-test, macOS app packagi
 
 ## Recent changes
 
+- Fixed live recording after play-once reaches the clip end: resuming preview with Play/Space now reopens frame capture for the same output. Rewind while paused continues to wait for Play. Regression tests cover direct restart and Rewind then Play, with play-once/loop playback on resume, and decode owned red/blue synthetic segments to verify that resumed frames are actually saved. This is headless state/encoded-output evidence; it adds no native desktop or runtime acceptance.
+
 - Added a source comparison hold key (`C`), in-app workflow/preset guide (`?`) and contextual preset descriptions.
 - Fixed repeated loading after a manual pause or completed full export: only an accepted clip that begins loading resets pause/frame/readiness state. Cancelling selection keeps the previous paused clip unchanged. Both paths have workflow regressions and passed native repeats at `f199d6b`, including picker cancellation preservation. A separately reproduced black pause snapshot now uses GPU texture readback. Desktop GPU regression and actual colour-bar pause/end/freeze/cancel/reload checks passed at `eb7ea12`.
 - Added save destination selection to live export; both modes refuse existing files. Temporary encoding plus no-replace hard-link publication protects previous outputs and source files, including a destination created during encoding.
@@ -192,4 +194,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - Local verification for this audit: 49 Python tests ran, 47 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Before this review repair, exact-head CI passed at `e6a67051af74e8cd58c5d2f5fc83098f5d070f11` in runs `37542960852` and `37542955166`, including full application compilation on Linux/macOS/Windows, 93 encoder checks and workflow tests. The first descriptor repair at `f762bb3` passed Linux, Windows and encoder jobs but failed macOS on the root-spelling bug above; those failed runs are `37543905099` and `37543899732`. The alias correction passed the original macOS cases; its additional canonical test fixture required `self.repo.resolve()` rather than a third unselected spelling. Final code/test head `c598964b0b299535acb75862c10ef5d3d8f65104` passed both exact-head CI runs `37544725979` (PR) and `37544721395` (push). Actual logs confirm full compilation and 49 Python tests on Linux/macOS/Windows: expected skips 1/10/32 respectively. Windows staging fails closed; its supported archive/launcher checks pass. Linux also passes 93 real-encoder assertions, headless workflow tests and 155-link validation. Fresh independent review accepted that exact source under the stated trusted/cooperative contract. No release artifact, installer or external upload was produced.
 - Existing release asset names, release-bundle/Homebrew publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. The documentation-site workflow is now manual-only as described above. Their runtime/rights gaps are documented, not declared solved by these tests.
 
-Last updated: 2026-10-07 03:17
+Last updated: 2026-10-07 04:10

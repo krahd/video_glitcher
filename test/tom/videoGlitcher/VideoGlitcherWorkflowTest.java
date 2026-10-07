@@ -38,6 +38,12 @@ public final class VideoGlitcherWorkflowTest {
             testSmokeTimeout(directory);
             testLoadAfterPauseOrExport(directory, false);
             testLoadAfterPauseOrExport(directory, true);
+            for (boolean rewindFirst : new boolean[]{false, true}) {
+                for (boolean loopOnResume : new boolean[]{false, true}) {
+                    testLiveExportResumeAfterPlaybackEnd(directory, rewindFirst, loopOnResume);
+                }
+            }
+            System.out.println("Live export resume passed: 4 transport/playback combinations, each with 24 decoded red/blue frames.");
             Path actual = directory.resolve("actual.mp4");
             FfmpegVideoExporter exporter = FfmpegVideoExporter.start(actual.toString(), 4, 4, 24);
             exporter.writeFrame(new int[16]);
@@ -131,13 +137,96 @@ public final class VideoGlitcherWorkflowTest {
                 "A successfully decoded replacement clip must not be discarded by the timeout");
     }
 
+    private static void testLiveExportResumeAfterPlaybackEnd(Path directory, boolean rewindFirst, boolean loopOnResume) throws Exception {
+        VideoGlitcher app = new VideoGlitcher();
+        ReadyMovie movie = readyMovie();
+        set(app, "video", movie); set(app, "movieReady", true); set(app, "loopPlayback", false);
+        Path output = directory.resolve("live-resume-" + rewindFirst + "-" + loopOnResume + ".mp4");
+        FfmpegVideoExporter exporter = FfmpegVideoExporter.start(output.toString(), 4, 4, 24);
+        set(app, "videoExporter", exporter); set(app, "exporting", true); set(app, "exportFilename", output.toString());
+        for (Object mode : Class.forName("tom.videoGlitcher.VideoGlitcher$ExportMode").getEnumConstants()) {
+            if (mode.toString().equals("INTERACTIVE")) set(app, "exportMode", mode);
+        }
+        try {
+            int[] frame = new int[16];
+            java.util.Arrays.fill(frame, 0xffff0000);
+            for (int i = 0; i < 12; i++) exporter.writeFrame(frame);
+            invoke(app, "updatePlaybackCompletion");
+            check((boolean) get(app, "paused") && (boolean) get(app, "exportReachedPlaybackEnd"),
+                    "Live export must stop accepting frames at the play-once end");
+            check(!shouldWriteExportFrame(app) && (boolean) get(app, "exporting"),
+                    "End-of-clip must keep the live export open without appending end-frame duplicates");
+            if (rewindFirst) {
+                app.rewindToStart();
+                check((boolean) get(app, "paused") && !shouldWriteExportFrame(app),
+                        "Rewind while paused must wait for Play before extending an ended recording");
+            }
+            if (loopOnResume) app.togglePlaybackMode();
+            if (rewindFirst) app.pausePlay();
+            else { app.key = ' '; app.keyPressed(); }
+            check(movie.played && !(boolean) get(app, "paused") && movie.position == 0,
+                    "Play after the end must restart the preview at the beginning");
+            check(shouldWriteExportFrame(app),
+                    "Resuming preview after the end must also resume the still-open live recording");
+            java.util.Arrays.fill(frame, 0xff0000ff);
+            for (int i = 0; i < 12; i++) if (shouldWriteExportFrame(app)) exporter.writeFrame(frame);
+            check(exporter.framesWritten() == 24, "Both live-performance segments must reach the encoder");
+            app.stopExport();
+            waitForFinish(app);
+            check(Files.exists(output), "Resumed live recording must be saved");
+            String count = new String(runOwnedCommand(directory, "ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0",
+                    "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", output.toString()),
+                    java.nio.charset.StandardCharsets.UTF_8).trim();
+            check(count.equals("24"),
+                    "Saved MP4 must contain the frames recorded after resuming, not just the first segment");
+            byte[] pixels = runOwnedCommand(directory, "ffmpeg", "-v", "error", "-i", output.toString(),
+                    "-f", "rawvideo", "-pix_fmt", "rgb24", "-");
+            check(pixels.length == 24 * 4 * 4 * 3,
+                    "Saved live recording must decode into both complete segments");
+            for (int i = 0; i < pixels.length; i += 3) {
+                int red = pixels[i] & 255, green = pixels[i + 1] & 255, blue = pixels[i + 2] & 255;
+                check(i < 12 * 4 * 4 * 3 ? red >= 240 && green <= 12 && blue <= 12
+                                : blue >= 240 && red <= 12 && green <= 12,
+                        "Saved pixels must preserve the red pre-end and blue resumed performance segments");
+            }
+        } finally {
+            exporter.abort();
+            check(exporter.awaitCleanup(10, TimeUnit.SECONDS), "Live-resume test must clean its owned encoder");
+        }
+    }
+
+    private static byte[] runOwnedCommand(Path directory, String... command) throws Exception {
+        Path output = Files.createTempFile(directory, "command-output-", ".tmp");
+        Process child = null;
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command).redirectOutput(output.toFile())
+                    .redirectError(ProcessBuilder.Redirect.INHERIT);
+            FfmpegVideoExporter.configureEncoderEnvironment(builder.environment());
+            child = builder.start();
+            check(child.waitFor(10, TimeUnit.SECONDS) && child.exitValue() == 0,
+                    "Owned fixture command must complete successfully: " + command[0]);
+            return Files.readAllBytes(output);
+        } finally {
+            if (child != null && child.isAlive()) {
+                child.destroyForcibly();
+                check(child.waitFor(5, TimeUnit.SECONDS), "Timed-out fixture command must terminate");
+            }
+            Files.deleteIfExists(output);
+        }
+    }
+
+    private static boolean shouldWriteExportFrame(VideoGlitcher app) throws Exception {
+        Method method = VideoGlitcher.class.getDeclaredMethod("shouldWriteExportFrame"); method.setAccessible(true);
+        return (boolean) method.invoke(app);
+    }
+
     private static final class TestVideoGlitcher extends VideoGlitcher {
         @Override processing.video.Movie createMovie(String source) {
             try { return readyMovie(); } catch (Exception exception) { throw new RuntimeException(exception); }
         }
     }
     private static final class ReadyMovie extends processing.video.Movie {
-        boolean stopped; boolean played; int reads;
+        boolean stopped; boolean played; int reads; float position;
         private ReadyMovie() { super(null, "unused"); }
         @Override public boolean available() { return true; }
         @Override public void read() { reads++; }
@@ -145,8 +234,9 @@ public final class VideoGlitcherWorkflowTest {
         @Override public void pause() { }
         @Override public void play() { played = true; }
         @Override public void loop() { played = true; }
+        @Override public void jump(float where) { position = where; }
         @Override public boolean isPlaying() { return false; }
-        @Override public float time() { return 3; }
+        @Override public float time() { return position; }
         @Override public float duration() { return 3; }
         @Override public processing.core.PImage get() { return new processing.core.PImage(4, 4); }
     }
@@ -155,6 +245,7 @@ public final class VideoGlitcherWorkflowTest {
         Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe"); field.setAccessible(true);
         ReadyMovie movie = (ReadyMovie) ((sun.misc.Unsafe) field.get(null)).allocateInstance(ReadyMovie.class);
         movie.width = 4; movie.height = 4;
+        movie.position = 3;
         return movie;
     }
     private static void invoke(VideoGlitcher app, String method) throws Exception {
