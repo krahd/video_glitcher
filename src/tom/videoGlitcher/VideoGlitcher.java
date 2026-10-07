@@ -1178,7 +1178,7 @@ public class VideoGlitcher extends PApplet {
             if (paused) {
                 pausedFrame = snapshotSourceFrame(video);
                 video.pause();
-                setStatusMessage("Status: rewound " + currentVideoName);
+                setStatusMessage("Status: rewind requested; preview updates on Play");
             } else {
                 startPlayback();
                 setStatusMessage("Status: previewing " + currentVideoName);
