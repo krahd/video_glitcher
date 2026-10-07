@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "tested_commit": "841c74d04009bb0ac34591ea4127722179495a0f",
+  "tested_tree": "b5b630d67af2b4bb9914aac52cf159387c747e61",
+  "run_date_utc": "2026-10-07",
+  "evidence_retained_separately": true,
+  "raw_media_published_by_this_checkpoint": false,
+  "scope": "One observed Linux GUI recovery run, not hardware-GPU, memory-leak, shipping-runtime or redistribution acceptance.",
+  "files": [
+    {
+      "name": "REPORT.md",
+      "sha256": "321f1e6cc4064751975a753f00b6cd527e791fc4e45dabe9b359651fc3a31489"
+    },
+    {
+      "name": "01-native-environment.jpg",
+      "sha256": "aa1bb25343a2e1a142e7d2488617c4ec77e6022402ce5c56de86be9f0cc68084"
+    },
+    {
+      "name": "02-final-source-checks.jpg",
+      "sha256": "25119a1522d9da5c939d9d3aea93557dbe3ca62c37aee685490eb16a966cf573"
+    },
+    {
+      "name": "03-paused-colours.jpg",
+      "sha256": "9bc067a69ec0d3eefab4b7b22986ada91c581aef12ac777001e5d8491679b5f7"
+    },
+    {
+      "name": "04-picker-cancel-preserves-frame.jpg",
+      "sha256": "84c0835492733d9a07ce8d251420f9403c625f057f291a698f193d39707ed843"
+    },
+    {
+      "name": "05-reload-playing.jpg",
+      "sha256": "75784a272264f22e793b54ebd42de04a91d27c0293a342b9c026ece9dad5a548"
+    },
+    {
+      "name": "06-full-export-saved.jpg",
+      "sha256": "35bf2ef54a7598e694bfb24c27f92c4b2aea72098023520c8a376c8085168108"
+    },
+    {
+      "name": "07-full-export-decoded.jpg",
+      "sha256": "f4b1b5afca62238c8b762e7d7cc3339dad75e04629e40ebac175c8a1d1c604e9"
+    },
+    {
+      "name": "08-existing-output-refused.jpg",
+      "sha256": "44f910c0cfbf6e1f25443c4eb8ae7f878a4eb3c478270a96d5b959f0f5ad9337"
+    },
+    {
+      "name": "09-guide-during-full-export.jpg",
+      "sha256": "d9629ab5cc8d9f70c8ec4ec406dd64beb90a8188d759bf21dc25e0481872a510"
+    },
+    {
+      "name": "10-full-cancel-preview-restored.jpg",
+      "sha256": "511811047d9642e557860f9e210818c5ad9936984de8e071365b885764407d4f"
+    },
+    {
+      "name": "11-live-first-end.jpg",
+      "sha256": "7a159acb623c36c819d938c904b27a294d41f8c2ee1fbcbc918c253e356f4db0"
+    },
+    {
+      "name": "12-live-play-resumes-capture.jpg",
+      "sha256": "3ca04ee601360013f8e7476b5ca7bde983a7bff34a17c19732d24cac9fd48758"
+    },
+    {
+      "name": "13-live-rewound-at-end.jpg",
+      "sha256": "7cf4593be120a362bef7abcd3514828124c4d3580f648509319e647805755bbe"
+    },
+    {
+      "name": "14-live-rewind-play-resumes.jpg",
+      "sha256": "f1f24fe82a6fe22eaa3d55a49cb9084c3ce55e6765b35ff41a4279249fc43aa2"
+    },
+    {
+      "name": "15-live-three-passes.jpg",
+      "sha256": "03fa18ec1087224f977409661cd374628c2f79dc817e01562de31804b8e364c2"
+    },
+    {
+      "name": "16-live-replay-saved.jpg",
+      "sha256": "2aa55d5ce3c9d191267190482802bb7569a062ad0d4b98c22c0ddf9764d0de41"
+    },
+    {
+      "name": "17-live-cancel-preview-restored.jpg",
+      "sha256": "337dc261edf2060301c3f396e8f671adc18a9625cc02f8f6a0d455fecc7aad15"
+    },
+    {
+      "name": "18-native-runtime-warnings.jpg",
+      "sha256": "3b691cf1c21e8354ac90b5bd0a8726776db88101d94a2a9a5b4c88f581f6e447"
+    },
+    {
+      "name": "19-decode-cleanup-integrity.jpg",
+      "sha256": "82bac25250e05959ae11397fa2b467a581b25fcd9238e8304ded6922f4701c3a"
+    },
+    {
+      "name": "20-decoded-resume-segments.jpg",
+      "sha256": "621b38a596897f93262950b9c309394fc6c04a3f23376539155275a23923e2e9"
+    },
+    {
+      "name": "21-native-source-runtime-hashes.jpg",
+      "sha256": "6993095b3acb12f4182c0e06be295f4645e8be0b8fa952bc58ccbd9d1633cf75"
+    }
+  ],
+  "independent_review": {
+    "decision": "accepted",
+    "receipt_sha256": "5b0169e7e23a88a40d3916678487438c85004af5da7415553555003c965e0127",
+    "scope": "Report, 21 screenshots, checksums and source/manifest identities inspected; raw desktop media was not independently re-decoded during evidence review."
+  }
+}
