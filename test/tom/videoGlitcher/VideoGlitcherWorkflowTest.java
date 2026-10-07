@@ -36,6 +36,7 @@ public final class VideoGlitcherWorkflowTest {
         Path directory = Files.createTempDirectory("video-glitcher-workflow-");
         try {
             testSmokeTimeout(directory);
+            VideoGlitcherLifecycleTest.run(directory);
             testLoadAfterPauseOrExport(directory, false);
             testLoadAfterPauseOrExport(directory, true);
             for (boolean rewindFirst : new boolean[]{false, true}) {

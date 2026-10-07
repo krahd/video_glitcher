@@ -1298,12 +1298,20 @@ public class VideoGlitcher extends PApplet {
         }
         
         private void releaseVideo() {
-            if (video != null) {
+            Movie retiring = video;
+            video = null;
+            if (retiring != null) {
+                // Dropping our field does not release Processing's registered callbacks or native pipeline.
+                // Detach first so a repeated release cannot dispose a newly selected movie.
                 try {
-                    video.stop();
+                    retiring.stop();
                 } catch (Exception ignored) {
                 }
-                video = null;
+                try {
+                    retiring.dispose();
+                } catch (Exception exception) {
+                    println("Could not fully release the previous video pipeline: " + exception.getMessage());
+                }
             }
         }
         
@@ -1318,7 +1326,8 @@ public class VideoGlitcher extends PApplet {
                 startPlayback();
                 setStatusMessage("Status: loading " + currentVideoName + " via " + sourceLabel);
             } catch (RuntimeException exception) {
-                video = null;
+                // Construction may have succeeded before playback failed. Release that pipeline before fallback.
+                releaseVideo();
                 println("Failed to load video via " + sourceLabel + ": " + exception.getMessage());
                 if (!triedVideoUriFallback && currentVideoFile != null && "path".equals(sourceLabel)) {
                     triedVideoUriFallback = true;
