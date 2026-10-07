@@ -39,6 +39,7 @@ public final class VideoGlitcherWorkflowTest {
             VideoGlitcherLifecycleTest.run(directory);
             VideoGlitcherExportStartTest.run(directory);
             VideoGlitcherExportOutcomeTest.run(directory);
+            VideoGlitcherLoadStatusTest.run(directory);
             testLoadAfterPauseOrExport(directory, false);
             testLoadAfterPauseOrExport(directory, true);
             for (boolean rewindFirst : new boolean[]{false, true}) {

@@ -104,6 +104,7 @@ public class VideoGlitcher extends PApplet {
     private ExportMode finishingExportMode = ExportMode.NONE;
     private String finishingExportFilename;
     private File pendingVideoFile;
+    private String videoLoadExportOutcome = "";
     private final ConcurrentLinkedQueue<Runnable> pendingGuiActions = new ConcurrentLinkedQueue<>();
     private boolean paused = false;
     private boolean loopPlayback = true;
@@ -473,7 +474,7 @@ public class VideoGlitcher extends PApplet {
         if (!movieReady && movie.width > 0 && movie.height > 0) {
             movieReady = true;
             computeVideoFit();
-            setStatusMessage("Status: previewing " + currentVideoName);
+            setVideoLoadStatus("Status: previewing " + currentVideoName);
             
             if (!hasLoadedFirstVideo) {
                 hasLoadedFirstVideo = true;
@@ -484,9 +485,10 @@ public class VideoGlitcher extends PApplet {
             if (paused) {
                 pausedFrame = snapshotSourceFrame(movie);
                 movie.pause();
-                setStatusMessage("Status: paused " + currentVideoName);
+                setVideoLoadStatus("Status: paused " + currentVideoName);
                 updatePausePlayButton();
             }
+            videoLoadExportOutcome = "";
         }
     }
     
@@ -1081,6 +1083,12 @@ public class VideoGlitcher extends PApplet {
             statusMessage = message;
         }
         
+        private void setVideoLoadStatus(String message) {
+            // Keep the preceding export result until this queued load reaches a real outcome.
+            setStatusMessage(videoLoadExportOutcome.isEmpty() ? message : videoLoadExportOutcome + "; "
+                    + (message.startsWith("Status: ") ? message.substring(8) : message));
+        }
+
         private boolean getToggleValue(String name) {
             if (name.equals("useRGBSplit"))
                 return useRGBSplit;
@@ -1260,7 +1268,14 @@ public class VideoGlitcher extends PApplet {
             selectingVideo = false;
             
             if (selection == null) {
-                setStatusMessage("Status: no video selected");
+                if (pendingVideoFile != null) {
+                    setStatusMessage("File selection cancelled. Finishing current export before loading "
+                            + pendingVideoFile.getName() + ". X discards the export.");
+                } else if (video != null) {
+                    setVideoLoadStatus("File selection cancelled; keeping " + currentVideoName);
+                } else {
+                    setStatusMessage("Status: no video selected");
+                }
                 return;
             }
             
@@ -1268,12 +1283,17 @@ public class VideoGlitcher extends PApplet {
         }
         
         private void loadVideoFile(File file) {
+            loadVideoFile(file, "");
+        }
+
+        private void loadVideoFile(File file, String exportOutcome) {
             stopExport();
             if (pendingExportFinish != null) {
                 pendingVideoFile = file;
                 setStatusMessage("Finishing current export before loading " + file.getName() + ". X discards the export.");
                 return;
             }
+            videoLoadExportOutcome = exportOutcome;
             releaseVideo();
 
             // A newly accepted clip starts previewing, regardless of the old clip's pause/end state.
@@ -1324,7 +1344,7 @@ public class VideoGlitcher extends PApplet {
             try {
                 video = createMovie(source);
                 startPlayback();
-                setStatusMessage("Status: loading " + currentVideoName + " via " + sourceLabel);
+                setVideoLoadStatus("Status: loading " + currentVideoName + " via " + sourceLabel);
             } catch (RuntimeException exception) {
                 // Construction may have succeeded before playback failed. Release that pipeline before fallback.
                 releaseVideo();
@@ -1333,7 +1353,8 @@ public class VideoGlitcher extends PApplet {
                     triedVideoUriFallback = true;
                     startMovie(currentVideoFile.toURI().toString(), "file URI");
                 } else {
-                    setStatusMessage("Status: failed to load " + currentVideoName);
+                    setVideoLoadStatus("Status: failed to load " + currentVideoName);
+                    videoLoadExportOutcome = "";
                 }
             }
         }
@@ -1368,7 +1389,8 @@ public class VideoGlitcher extends PApplet {
                 releaseVideo();
                 paused = false;
                 updatePausePlayButton();
-                setStatusMessage("Video did not decode within 15 seconds. Press L to retry another clip; check the native video runtime.");
+                setVideoLoadStatus("Video did not decode within 15 seconds. Press L to retry another clip; check the native video runtime.");
+                videoLoadExportOutcome = "";
                 if (launchOptions.smokeTest()) finishSmokeRun(false, "Smoke video decode timed out");
             }
         }
@@ -2454,8 +2476,7 @@ public class VideoGlitcher extends PApplet {
                     updateExportButtons();
                     setStatusMessage((error == null ? "Saved export: " + finishingExportFilename : error) + previewWarning);
                     if (selectedNextVideo != null && error == null) {
-                        loadVideoFile(selectedNextVideo);
-                        setStatusMessage("Saved export: " + finishingExportFilename + "; loading " + selectedNextVideo.getName());
+                        loadVideoFile(selectedNextVideo, "Saved export: " + finishingExportFilename);
                     } else if (selectedNextVideo != null) {
                         setStatusMessage(error + previewWarning + " New clip not loaded; press L to retry.");
                     }
@@ -2494,7 +2515,7 @@ public class VideoGlitcher extends PApplet {
                     if (pendingVideoFile != null) {
                         File selectedNextVideo = pendingVideoFile;
                         pendingVideoFile = null;
-                        loadVideoFile(selectedNextVideo);
+                        loadVideoFile(selectedNextVideo, "Export cancelled. No output saved; source and previous exports unchanged.");
                     }
                 }
 
