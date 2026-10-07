@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-06 23:14
+Last updated: 2026-10-07 03:17
 
 ## Project purpose
 
@@ -27,7 +27,9 @@ The GUI includes compact/full modes, preset buttons, high-level digital/analogue
 
 ## Active focus
 
-Current focus is the draft preview-to-export product candidate and bounded local-evaluation packaging audit: safe internal staging, truthful archive provenance, argument-preserving launchers and a concrete first-session/platform checklist. Existing release assets and release/Homebrew workflows remain unchanged. See `docs/LOCAL-EVALUATION.md`. The paid redistribution hold remains in force; this is not a cleared or validated paid product. See `docs/PRODUCT-CANDIDATE-2026-10-06.md`.
+Current focus is the preview-to-export product candidate and bounded local-evaluation packaging audit: safe internal staging, truthful archive provenance, argument-preserving launchers and a concrete first-session/platform checklist. Existing release assets and release/Homebrew workflows remain unchanged. See `docs/LOCAL-EVALUATION.md`. The paid redistribution hold remains in force; this is not a cleared or validated paid product. See `docs/PRODUCT-CANDIDATE-2026-10-06.md`.
+
+Documentation publication through `.github/workflows/pages.yml` is manual-only (`workflow_dispatch`). The main-branch push trigger has been removed; the deployment job, permissions and concurrency settings are preserved. Main pushes continue to run build/export regression CI. Release-bundle and Homebrew workflows remain tag/manual-only and unchanged. Source integration does not establish native desktop acceptance, licensing clearance or permission to release or publish the documentation site.
 
 ## Architecture overview
 
@@ -188,6 +190,6 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - README states Java 21, desktop/AWT and external libx264-capable ffmpeg requirements. `docs/LOCAL-EVALUATION.md` covers load, effects, compare, preview, safe full/live export, finding output, discard, overwrite refusal and repeat loading with synthetic media only.
 - `docs/REDISTRIBUTION-AUDIT.md` now inventories native trees, exact recipe scope, media/owner decisions and official upstream licensing sources. No new project licence is chosen, and inherited binaries/notices remain unchanged.
 - Local verification for this audit: 49 Python tests ran, 47 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Before this review repair, exact-head CI passed at `e6a67051af74e8cd58c5d2f5fc83098f5d070f11` in runs `37542960852` and `37542955166`, including full application compilation on Linux/macOS/Windows, 93 encoder checks and workflow tests. The first descriptor repair at `f762bb3` passed Linux, Windows and encoder jobs but failed macOS on the root-spelling bug above; those failed runs are `37543905099` and `37543899732`. The alias correction passed the original macOS cases; its additional canonical test fixture required `self.repo.resolve()` rather than a third unselected spelling. Final code/test head `c598964b0b299535acb75862c10ef5d3d8f65104` passed both exact-head CI runs `37544725979` (PR) and `37544721395` (push). Actual logs confirm full compilation and 49 Python tests on Linux/macOS/Windows: expected skips 1/10/32 respectively. Windows staging fails closed; its supported archive/launcher checks pass. Linux also passes 93 real-encoder assertions, headless workflow tests and 155-link validation. Fresh independent review accepted that exact source under the stated trusted/cooperative contract. No release artifact, installer or external upload was produced.
-- Existing release asset names, publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. Their runtime/rights gaps are documented, not declared solved by these tests.
+- Existing release asset names, release-bundle/Homebrew publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. The documentation-site workflow is now manual-only as described above. Their runtime/rights gaps are documented, not declared solved by these tests.
 
-Last updated: 2026-10-06 23:14
+Last updated: 2026-10-07 03:17
