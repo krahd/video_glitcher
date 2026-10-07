@@ -2539,6 +2539,11 @@ public class VideoGlitcher extends PApplet {
                     } else {
                         video.play();
                     }
+                    // An ended live recording remains open. Resuming the preview must also
+                    // resume frame capture, rather than leaving the end-of-clip gate latched.
+                    if (exporting && exportMode == ExportMode.INTERACTIVE) {
+                        exportReachedPlaybackEnd = false;
+                    }
                 }
                 
                 private boolean isAtPlaybackEnd() {
