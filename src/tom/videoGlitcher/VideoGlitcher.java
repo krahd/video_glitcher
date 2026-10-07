@@ -2447,20 +2447,21 @@ public class VideoGlitcher extends PApplet {
                     finishingExportMode = ExportMode.NONE;
                     exportMode = ExportMode.NONE;
                     exportReachedPlaybackEnd = false;
-                    if (completedMode == ExportMode.FULL_PROCESS && video != null && !paused) startPlayback();
-                    updateExportButtons();
-                    setStatusMessage(error == null ? "Saved export: " + finishingExportFilename : error);
                     File selectedNextVideo = pendingVideoFile;
                     pendingVideoFile = null;
+                    String previewWarning = selectedNextVideo != null && error == null
+                            ? "" : restorePreviewAfterExport(completedMode);
+                    updateExportButtons();
+                    setStatusMessage((error == null ? "Saved export: " + finishingExportFilename : error) + previewWarning);
                     if (selectedNextVideo != null && error == null) {
                         loadVideoFile(selectedNextVideo);
                         setStatusMessage("Saved export: " + finishingExportFilename + "; loading " + selectedNextVideo.getName());
                     } else if (selectedNextVideo != null) {
-                        setStatusMessage(error + " New clip not loaded; press L to retry.");
+                        setStatusMessage(error + previewWarning + " New clip not loaded; press L to retry.");
                     }
                     if (error != null) println(error);
                     if (launchOptions.smokeTest() && (launchOptions.autoExport() || launchOptions.autoProcess())) {
-                        finishSmokeRun(error == null, error == null ? "Smoke export completed" : error);
+                        finishSmokeRun(error == null, (error == null ? "Smoke export completed" : error) + previewWarning);
                     }
                 }
 
@@ -2487,9 +2488,9 @@ public class VideoGlitcher extends PApplet {
                     exportMode = ExportMode.NONE;
                     exportReachedPlaybackEnd = false;
                     lockedRenderSettings = null;
-                    if (cancelledMode == ExportMode.FULL_PROCESS && video != null && !paused) startPlayback();
+                    String previewWarning = pendingVideoFile == null ? restorePreviewAfterExport(cancelledMode) : "";
                     updateExportButtons();
-                    setStatusMessage("Export cancelled. No output saved; source and previous exports unchanged.");
+                    setStatusMessage("Export cancelled. No output saved; source and previous exports unchanged." + previewWarning);
                     if (pendingVideoFile != null) {
                         File selectedNextVideo = pendingVideoFile;
                         pendingVideoFile = null;
@@ -2508,6 +2509,24 @@ public class VideoGlitcher extends PApplet {
                     // while rolling back a failed full-process start.
                     failExport("Export could not start: " + exception.getMessage()
                             + ". Press L to reload the clip and try again.", false);
+                    retireFailedPreview();
+                }
+
+                private String restorePreviewAfterExport(ExportMode previousMode) {
+                    if (previousMode != ExportMode.FULL_PROCESS || video == null || paused) return "";
+                    try {
+                        startPlayback();
+                        return "";
+                    } catch (RuntimeException exception) {
+                        retireFailedPreview();
+                        String warning = " Preview could not resume: " + exception.getMessage()
+                                + ". Press L to reload the clip.";
+                        println(warning.trim());
+                        return warning;
+                    }
+                }
+
+                private void retireFailedPreview() {
                     releaseVideo();
                     movieReady = false;
                     paused = false;
@@ -2535,14 +2554,12 @@ public class VideoGlitcher extends PApplet {
                     exportMode = ExportMode.NONE;
                     exportReachedPlaybackEnd = false;
                     lockedRenderSettings = null;
-                    if (resumePreview && failedMode == ExportMode.FULL_PROCESS && video != null && !paused) {
-                        startPlayback();
-                    }
+                    String previewWarning = resumePreview ? restorePreviewAfterExport(failedMode) : "";
                     updateExportButtons();
-                    setStatusMessage(message);
+                    setStatusMessage(message + previewWarning);
                     println(message);
                     if (launchOptions.smokeTest()) {
-                        finishSmokeRun(false, message);
+                        finishSmokeRun(false, message + previewWarning);
                     }
                 }
                 
