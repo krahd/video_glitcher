@@ -2372,10 +2372,15 @@ public class VideoGlitcher extends PApplet {
                     freezeFramesLeft = 0;
                     paused = false;
                     pausedFrame = null;
-                    if (isAtPlaybackEnd()) {
-                        video.jump(0);
+                    try {
+                        if (isAtPlaybackEnd()) {
+                            video.jump(0);
+                        }
+                        startPlayback();
+                    } catch (RuntimeException exception) {
+                        failExportStartup(exception);
+                        return;
                     }
-                    startPlayback();
                     updatePausePlayButton();
                     
                     exporting = true;
@@ -2398,9 +2403,14 @@ public class VideoGlitcher extends PApplet {
                     freezeManual = false;
                     paused = false;
                     pausedFrame = null;
-                    video.noLoop();
-                    video.jump(0);
-                    video.play();
+                    try {
+                        video.noLoop();
+                        video.jump(0);
+                        video.play();
+                    } catch (RuntimeException exception) {
+                        failExportStartup(exception);
+                        return;
+                    }
                     updatePausePlayButton();
                     
                     exporting = true;
@@ -2493,7 +2503,28 @@ public class VideoGlitcher extends PApplet {
                     super.dispose();
                 }
 
+                private void failExportStartup(RuntimeException exception) {
+                    // Abort the acquired encoder before native teardown. Do not retry broken playback
+                    // while rolling back a failed full-process start.
+                    failExport("Export could not start: " + exception.getMessage()
+                            + ". Press L to reload the clip and try again.", false);
+                    releaseVideo();
+                    movieReady = false;
+                    paused = false;
+                    videoLoadStartedNanos = 0;
+                    pausedFrame = null;
+                    frozenFrame = null;
+                    previousFrame = null;
+                    freezeManual = false;
+                    freezeFramesLeft = 0;
+                    updatePausePlayButton();
+                }
+
                 private void failExport(String message) {
+                    failExport(message, true);
+                }
+
+                private void failExport(String message, boolean resumePreview) {
                     ExportMode failedMode = exportMode;
                     exporting = false;
                     if (videoExporter != null) {
@@ -2504,7 +2535,7 @@ public class VideoGlitcher extends PApplet {
                     exportMode = ExportMode.NONE;
                     exportReachedPlaybackEnd = false;
                     lockedRenderSettings = null;
-                    if (failedMode == ExportMode.FULL_PROCESS && video != null && !paused) {
+                    if (resumePreview && failedMode == ExportMode.FULL_PROCESS && video != null && !paused) {
                         startPlayback();
                     }
                     updateExportButtons();
