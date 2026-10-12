@@ -81,18 +81,16 @@ public class VideoGlitcher extends PApplet {
     private static final int ADVANCED_TOGGLE_Y_OFFSET = 0;
     private static final int ADVANCED_LABEL_Y_OFFSET = 1;
     
+    private static final int WINDOW_WIDTH = 960;
+    private static final int WINDOW_HEIGHT = 540;
+
     public static void main(String[] args) {
         launchOptions = LaunchOptions.parse(args);
         // Bundled GStreamer libraries must not be loaded into GTK's native file chooser.
         // Swing keeps Linux save/load dialogs in the Java UI without that native ABI collision.
         if (PApplet.platform == LINUX) useNativeSelect = false;
-        if (launchOptions.smokeTest()) {
-            PApplet.main(new String[] { VideoGlitcher.class.getName() });
-            return;
-        }
-        
-        PApplet.hideMenuBar();
-        PApplet.main(new String[] { "--present", VideoGlitcher.class.getName() });
+        if (!launchOptions.windowed()) PApplet.hideMenuBar();
+        PApplet.main(launchOptions.processingArgs());
     }
     
     private Movie video;
@@ -228,8 +226,8 @@ public class VideoGlitcher extends PApplet {
     public void settings() {
         pixelDensity(1);
         noSmooth();
-        if (launchOptions.smokeTest()) {
-            size(960, 540, P2D);
+        if (launchOptions.windowed()) {
+            size(WINDOW_WIDTH, WINDOW_HEIGHT, P2D);
         } else {
             ensureMenuBarHidden();
             fullScreen(P2D);
@@ -463,7 +461,7 @@ public class VideoGlitcher extends PApplet {
     }
     
     private void ensureMenuBarHidden() {
-        if (!launchOptions.smokeTest()) {
+        if (!launchOptions.windowed()) {
             PApplet.hideMenuBar();
         }
     }
@@ -2967,6 +2965,7 @@ public class VideoGlitcher extends PApplet {
                         
                         private static final class LaunchOptions {
                             private final boolean smokeTest;
+                            private final boolean windowed;
                             private final String videoPath;
                             private final String presetName;
                             private final boolean autoExport;
@@ -2974,9 +2973,10 @@ public class VideoGlitcher extends PApplet {
                             private final int smokeFrames;
                             private final int exportFrames;
                             
-                            private LaunchOptions(boolean smokeTest, String videoPath, String presetName, boolean autoExport,
+                            private LaunchOptions(boolean smokeTest, boolean windowed, String videoPath, String presetName, boolean autoExport,
                                 boolean autoProcess, int smokeFrames, int exportFrames) {
                                     this.smokeTest = smokeTest;
+                                    this.windowed = windowed;
                                     this.videoPath = videoPath;
                                     this.presetName = presetName;
                                     this.autoExport = autoExport;
@@ -2986,11 +2986,12 @@ public class VideoGlitcher extends PApplet {
                                 }
                                 
                                 static LaunchOptions defaults() {
-                                    return new LaunchOptions(false, "", "Cinematic", false, false, 60, 48);
+                                    return new LaunchOptions(false, false, "", "Cinematic", false, false, 60, 48);
                                 }
                                 
                                 static LaunchOptions parse(String[] args) {
                                     boolean smokeTest = false;
+                                    boolean windowed = false;
                                     String videoPath = "";
                                     String presetName = "Cinematic";
                                     boolean autoExport = false;
@@ -3001,6 +3002,8 @@ public class VideoGlitcher extends PApplet {
                                     for (String arg : args) {
                                         if ("--smoke-test".equals(arg)) {
                                             smokeTest = true;
+                                        } else if ("--windowed".equals(arg)) {
+                                            windowed = true;
                                         } else if (arg.startsWith("--video=")) {
                                             videoPath = arg.substring("--video=".length());
                                         } else if (arg.startsWith("--preset=")) {
@@ -3016,7 +3019,7 @@ public class VideoGlitcher extends PApplet {
                                         }
                                     }
                                     
-                                    return new LaunchOptions(smokeTest, videoPath, presetName, autoExport, autoProcess, smokeFrames,
+                                    return new LaunchOptions(smokeTest, windowed, videoPath, presetName, autoExport, autoProcess, smokeFrames,
                                         exportFrames);
                                     }
                                     
@@ -3063,6 +3066,15 @@ public class VideoGlitcher extends PApplet {
                                         }
                                     }
                                     
+                                    boolean windowed() {
+                                        return smokeTest || windowed;
+                                    }
+
+                                    String[] processingArgs() {
+                                        return windowed() ? new String[] { VideoGlitcher.class.getName() }
+                                            : new String[] { "--present", VideoGlitcher.class.getName() };
+                                    }
+
                                     boolean smokeTest() {
                                         return smokeTest;
                                     }

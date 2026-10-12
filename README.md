@@ -4,7 +4,7 @@
 | --- | --- |
 | ![Source clip](docs/assets/video_glitcher-source.gif) | ![Clip exported from video_glitcher](docs/assets/video_glitcher-glitched.gif) |
 
-video_glitcher is a Java app built with [Processing](http://processing.org) as a library. It extends `PApplet`, loads a video file, previews it fullscreen, applies glitch effects in real time, and exports the result as an MP4 in either live interactive mode or full-process mode.
+video_glitcher is a Java app built with [Processing](http://processing.org) as a library. It extends `PApplet`, loads a video file, previews it fullscreen or in an optional fixed-size window, applies glitch effects in real time, and exports the result as an MP4 in either live interactive mode or full-process mode.
 
 Project site: [krahd.github.io/video_glitcher](https://krahd.github.io/video_glitcher/)
 
@@ -216,6 +216,14 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
   tom.videoGlitcher.VideoGlitcher
 ```
 
+### Optional windowed preview (current source)
+
+Append the exact `--windowed` flag after `tom.videoGlitcher.VideoGlitcher` in your platform's source run command. The Linux source launcher forwards it with `bash scripts/run-linux.sh --windowed`. Existing portable launchers also forward arguments, but historical v1.1.3 binaries do not implement this new flag.
+
+This selects a fixed 960×540 preview canvas with the normal controls, HUD, presets and keyboard shortcuts. The Advanced panel uses its existing mouse-wheel scrolling; `U` hides/restores controls when you want the unobstructed preview. Omitting the flag retains fullscreen. No custom dimensions or runtime mode switch are added. `--video=` and `--preset=` still work; adding `--smoke-test` retains smoke mode's hidden controls, automation and exit behaviour rather than starting an interactive session.
+
+Export still uses the preview canvas, so windowed exports are 960×540 with any fitted black mattes and no audio. This makes a smaller-canvas choice available; it does not guarantee an overloaded export will recover or establish frame rate, memory usage or native stability. The desktop must have room for the canvas plus OS window decorations. Headless layout checks do not prove DPI, window-manager, GPU/video or chooser behaviour; the native-retry stop in the [evaluation checklist](docs/LOCAL-EVALUATION.md) remains active.
+
 ## Preview-to-export workflow
 
 Press `?` in the app for a short preset and workflow guide. Start with `Subtle` or `Cinematic`, or choose `VHS Decay` for tracking/colour drift and `Old Digicam` for smear/column drift. Choosing a preset shows its description in the status bar. Hold `C` to compare the source without changing your settings or the recorded output.
@@ -282,7 +290,7 @@ See [candidate validation and remaining product gates](docs/PRODUCT-CANDIDATE-20
 - The full-height panel now stops at the HUD/status bar instead of running behind it, and the footer transport row uses clearer labels such as `REWIND`.
 - When the full panel grows beyond the visible space, use the mouse wheel while the pointer is over the GUI to scroll the control list.
 - If the fitted video does not fill the screen, black mattes are drawn around it so glitches stay confined to the visible video area.
-- The app now calls `PApplet.hideMenuBar()` before entering Processing present mode so fullscreen explicitly covers the macOS menu bar.
+- The app now calls `PApplet.hideMenuBar()` before entering Processing present mode so fullscreen explicitly covers the macOS menu bar. Windowed and smoke modes skip menu-bar hiding.
 
 ## Notes
 
