@@ -115,9 +115,18 @@ class PrerequisiteTests(unittest.TestCase):
 
     def test_literal_subprocess_argument(self):
         literal = 'owned path with spaces; $(must-not-run) & unicode-é'
-        probe = diagnostic.run_probe([sys.executable, '-c', 'import sys; print(sys.argv[1])', literal])
+        for encoding in ('utf-8', 'cp1252'):
+            with self.subTest(child_console_encoding=encoding), mock.patch.dict(os.environ, PYTHONIOENCODING=encoding):
+                # This checks argument transport, not the child's platform console codec.
+                probe = diagnostic.run_probe([sys.executable, '-c',
+                    'import sys; sys.stdout.buffer.write(sys.argv[1].encode("utf-8"))', literal])
+                self.assertEqual(probe.state, 'ok')
+                self.assertEqual(probe.output.strip(), literal)
+
+    def test_non_utf8_output_is_replaced_without_crashing(self):
+        probe = diagnostic.run_probe([sys.executable, '-c', 'import sys; sys.stdout.buffer.write(bytes([233]))'])
         self.assertEqual(probe.state, 'ok')
-        self.assertEqual(probe.output.strip(), literal)
+        self.assertEqual(probe.output, '\ufffd')
 
     def test_interruption_reaps_owned_child(self):
         with tempfile.TemporaryDirectory() as directory:
