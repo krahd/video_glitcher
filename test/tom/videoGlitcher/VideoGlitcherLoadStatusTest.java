@@ -212,6 +212,7 @@ public final class VideoGlitcherLoadStatusTest {
         Method method = VideoGlitcher.class.getDeclaredMethod("updateMovieFrame", processing.video.Movie.class); method.setAccessible(true); method.invoke(app, get(app, "video"));
     }
     private static void select(TestApp app, Path path) throws Exception {
+        if (path != null && !Files.exists(path)) Files.writeString(path, "owned load-status source", java.nio.file.StandardOpenOption.CREATE_NEW);
         set(app, "selectingVideo", true); app.videoSelected(path == null ? null : path.toFile());
         check((boolean) get(app, "selectingVideo"), "Public picker callback must defer state to draw");
         drain(app); check(!(boolean) get(app, "selectingVideo"), "Draw must consume picker selection");

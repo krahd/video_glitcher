@@ -1315,10 +1315,37 @@ public class VideoGlitcher extends PApplet {
         }
         
         private void loadVideoFile(File file) {
-            loadVideoFile(file, "");
+            loadVideoFile(file, "", ExportMode.NONE);
         }
 
-        private void loadVideoFile(File file, String exportOutcome) {
+        private void loadVideoFile(File file, String exportOutcome, ExportMode rejectedLoadPreviewMode) {
+            boolean readable;
+            try {
+                readable = file.isFile() && file.canRead();
+            } catch (SecurityException exception) {
+                readable = false;
+            }
+            if (!readable) {
+                // A queued input can disappear during saving. Restore the old preview's normal mode.
+                String warning = restorePreviewAfterExport(rejectedLoadPreviewMode);
+                String context;
+                if (pendingExportFinish != null) {
+                    context = pendingVideoFile == null ? "Export is still finishing."
+                            : "Finishing current export before loading " + pendingVideoFile.getName() + ".";
+                    context += " Press L after saving to choose another clip.";
+                } else if (isFullProcessExportActive()) {
+                    context = "Full-clip export continues. Press L after it finishes to choose another clip.";
+                } else {
+                    context = (exporting ? "Current recording remains open."
+                            : video == null ? "No preview is currently available." : "Current preview unchanged.")
+                            + " Press L to choose another clip.";
+                }
+                String message = "Could not load " + file.getName() + ": choose an existing readable video file. " + context;
+                // Keep the real save/cancel result even if the deferred selection is rejected.
+                if (exportOutcome.isEmpty()) setVideoLoadStatus(message + warning);
+                else setStatusMessage(exportOutcome + "; " + message + warning);
+                return;
+            }
             stopExport();
             if (pendingExportFinish != null) {
                 pendingVideoFile = file;
@@ -2525,7 +2552,7 @@ public class VideoGlitcher extends PApplet {
                     updateExportButtons();
                     setStatusMessage((error == null ? "Saved export: " + finishingExportFilename : error) + previewWarning);
                     if (selectedNextVideo != null && error == null) {
-                        loadVideoFile(selectedNextVideo, "Saved export: " + finishingExportFilename);
+                        loadVideoFile(selectedNextVideo, "Saved export: " + finishingExportFilename, completedMode);
                     } else if (selectedNextVideo != null) {
                         setStatusMessage(error + previewWarning + " New clip not loaded; press L to retry.");
                     }
@@ -2564,7 +2591,7 @@ public class VideoGlitcher extends PApplet {
                     if (pendingVideoFile != null) {
                         File selectedNextVideo = pendingVideoFile;
                         pendingVideoFile = null;
-                        loadVideoFile(selectedNextVideo, "Export cancelled. No output saved; source and previous exports unchanged.");
+                        loadVideoFile(selectedNextVideo, "Export cancelled. No output saved; source and previous exports unchanged.", cancelledMode);
                     }
                 }
 

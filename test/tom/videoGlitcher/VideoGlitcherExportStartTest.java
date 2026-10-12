@@ -67,6 +67,7 @@ public final class VideoGlitcherExportStartTest {
             }
             check(app.failedEncoders.size() == 3, "Every playback failure must occur after a real encoder was acquired");
             // Retry without waiting for prior asynchronous abort cleanup. All temporary paths are private.
+            if (!Files.exists(directory.resolve("reload-owned.mp4"))) Files.writeString(directory.resolve("reload-owned.mp4"), "owned reload source");
             set(app, "selectingVideo", true); app.videoSelected(directory.resolve("reload-owned.mp4").toFile()); drain(app);
             ScriptedMovie retry = (ScriptedMovie) get(app, "video");
             Method update = VideoGlitcher.class.getDeclaredMethod("updateMovieFrame", processing.video.Movie.class); update.setAccessible(true); update.invoke(app, retry);

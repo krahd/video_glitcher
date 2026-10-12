@@ -38,6 +38,7 @@ public final class VideoGlitcherWorkflowTest {
             testOutputPickerSuggestions(directory);
             VideoGlitcherPickerFailureTest.run(directory);
             VideoGlitcherFrameFailureTest.run(directory);
+            VideoGlitcherInputPreflightTest.run(directory);
             testSmokeTimeout(directory);
             VideoGlitcherLifecycleTest.run(directory);
             VideoGlitcherExportStartTest.run(directory);
@@ -208,7 +209,9 @@ public final class VideoGlitcherWorkflowTest {
         check(get(app, "video") == old && !old.stopped, "Picker cancellation must preserve the old pipeline");
         set(app, "freezeManual", true); set(app, "freezeFramesLeft", 5);
         set(app, "selectingVideo", true);
-        app.videoSelected(directory.resolve(afterExport ? "after-export.mp4" : "after-pause.mp4").toFile());
+        Path nextSource = directory.resolve(afterExport ? "after-export.mp4" : "after-pause.mp4");
+        Files.writeString(nextSource, "owned next source");
+        app.videoSelected(nextSource.toFile());
         check((boolean) get(app, "paused"), "Queued selection must not reset playback before draw handles it");
         drainPickerActions(app); // Invokes the actual accepted-selection -> loadVideoFile -> startMovie path.
         ReadyMovie next = (ReadyMovie) get(app, "video");

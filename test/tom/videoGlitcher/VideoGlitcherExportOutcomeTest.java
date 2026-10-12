@@ -124,6 +124,7 @@ public final class VideoGlitcherExportOutcomeTest {
         Path output = directory.resolve("before-next.mp4"); FfmpegVideoExporter encoder = start(app, previous, output, true);
         try {
             writeGreenFrames(encoder); previous.failResume = true;
+            Files.writeString(directory.resolve("selected-next.mp4"), "owned queued source");
             set(app, "pendingVideoFile", directory.resolve("selected-next.mp4").toFile());
             if (cancel) app.cancelExport();
             else { app.stopExport(); check(finishing(app).get(10, TimeUnit.SECONDS) == null, "Queued replacement output must finish"); invoke(app, "completePendingExport"); }
