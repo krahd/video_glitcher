@@ -265,9 +265,7 @@ public class VideoGlitcher extends PApplet {
         cp5.setVisible(showGUI && !showGuide);
         background(0);
         
-        if (video != null && !paused && video.available()) {
-            updateMovieFrame(video);
-        }
+        readAvailableMovieFrame();
         
         checkVideoLoadTimeout();
         normalizeRanges();
@@ -470,6 +468,17 @@ public class VideoGlitcher extends PApplet {
         }
     }
     
+    private void readAvailableMovieFrame() {
+        try {
+            if (video != null && !paused && video.available()) updateMovieFrame(video);
+        } catch (RuntimeException exception) {
+            String loadOutcome = videoLoadExportOutcome;
+            recoverTransportFailure("update a video frame", exception);
+            if (!loadOutcome.isEmpty()) setStatusMessage(loadOutcome + "; " + statusMessage);
+            videoLoadExportOutcome = "";
+        }
+    }
+
     private void updateMovieFrame(Movie movie) {
         movie.read();
         
@@ -2700,26 +2709,30 @@ public class VideoGlitcher extends PApplet {
                 }
                 
                 private void updatePlaybackCompletion() {
-                    if (!movieReady || video == null || paused || video.isPlaying() || !isAtPlaybackEnd()) {
-                        return;
-                    }
-                    
-                    paused = true;
-                    pausedFrame = snapshotSourceFrame(video);
-                    updatePausePlayButton();
-                    
-                    if (exporting) {
-                        exportReachedPlaybackEnd = true;
-                        if (exportMode == ExportMode.FULL_PROCESS) {
-                            stopExport();
-
-                        } else {
-                            setStatusMessage("Status: interactive export reached end, click Export Stop");
+                    try {
+                        if (!movieReady || video == null || paused || video.isPlaying() || !isAtPlaybackEnd()) {
+                            return;
                         }
-                        return;
-                    }
                     
-                    setStatusMessage("Status: finished " + currentVideoName);
+                        paused = true;
+                        pausedFrame = snapshotSourceFrame(video);
+                        updatePausePlayButton();
+                    
+                        if (exporting) {
+                            exportReachedPlaybackEnd = true;
+                            if (exportMode == ExportMode.FULL_PROCESS) {
+                                stopExport();
+
+                            } else {
+                                setStatusMessage("Status: interactive export reached end, click Export Stop");
+                            }
+                            return;
+                        }
+                    
+                        setStatusMessage("Status: finished " + currentVideoName);
+                    } catch (RuntimeException exception) {
+                        recoverTransportFailure("finish playback", exception);
+                    }
                 }
                 
                 private void updatePausePlayButton() {
