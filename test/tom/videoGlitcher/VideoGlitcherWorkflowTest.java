@@ -35,6 +35,7 @@ public final class VideoGlitcherWorkflowTest {
         testManualFreezeUsesPreGuiFrame();
         Path directory = Files.createTempDirectory("video-glitcher-workflow-");
         try {
+            testOutputPickerSuggestions(directory);
             testSmokeTimeout(directory);
             VideoGlitcherLifecycleTest.run(directory);
             VideoGlitcherExportStartTest.run(directory);
@@ -81,6 +82,86 @@ public final class VideoGlitcherWorkflowTest {
         }
         System.out.println("All VideoGlitcher workflow state tests passed.");
     }
+    private static void testOutputPickerSuggestions(Path directory) throws Exception {
+        for (boolean full : new boolean[]{false, true}) {
+            OutputPickerApp app = new OutputPickerApp(); app.width = 4; app.height = 4;
+            ReadyMovie movie = readyMovie();
+            set(app, "video", movie); set(app, "movieReady", true); set(app, "paused", true);
+            processing.core.PImage snapshot = new processing.core.PImage(4, 4); set(app, "pausedFrame", snapshot);
+            Path original = directory.resolve("repeated export ü-" + full + ".mp4");
+            Files.writeString(original, "owned previous output"); set(app, "exportFilename", original.toString());
+            if (full) app.processVideo(); else app.startExport();
+            Path suggested = directory.resolve("repeated export ü-" + full + " (2).mp4");
+            check(app.suggestion.toPath().equals(suggested), "Repeated export must suggest a fresh same-folder filename");
+            check(get(app, "exportFilename").equals(original.toString()) && get(app, "videoExporter") == null
+                            && (boolean) get(app, "paused") && get(app, "pausedFrame") == snapshot,
+                    "Opening suggestion must not change the accepted destination, playback or encoder ownership");
+            check(!Files.exists(suggested), "A filename suggestion must not create or reserve output");
+            if (full) app.processOutputSelected(null); else app.interactiveOutputSelected(null);
+            drainPickerActions(app);
+            check(get(app, "exportFilename").equals(original.toString()) && (boolean) get(app, "paused")
+                            && get(app, "pausedFrame") == snapshot, "Cancelling must preserve the previous accepted destination and preview");
+            // Another writer can claim the suggested name while the chooser is open.
+            if (full) app.processVideo(); else app.startExport();
+            Files.writeString(suggested, "owned concurrent output");
+            if (full) app.processOutputSelected(app.suggestion); else app.interactiveOutputSelected(app.suggestion);
+            drainPickerActions(app);
+            check(get(app, "videoExporter") == null && !(boolean) get(app, "exporting")
+                            && ((String) get(app, "statusMessage")).contains("File already exists"),
+                    "Accepting an occupied suggestion must fail, never silently rename or replace it");
+            check(Files.readString(original).equals("owned previous output") && Files.readString(suggested).equals("owned concurrent output"),
+                    "Previous/concurrent output bytes must remain unchanged");
+            if (full) app.processVideo(); else app.startExport();
+            Path third = directory.resolve("repeated export ü-" + full + " (3).mp4");
+            check(app.suggestion.toPath().equals(third), "Retry must advance the numbered suggestion without nesting suffixes");
+            if (full) app.processOutputSelected(app.suggestion); else app.interactiveOutputSelected(app.suggestion);
+            drainPickerActions(app);
+            FfmpegVideoExporter encoder = (FfmpegVideoExporter) get(app, "videoExporter");
+            check(encoder != null && (boolean) get(app, "exporting"), "Accepting a free suggestion must start the requested export");
+            try {
+                encoder.writeFrame(new int[16]); app.stopExport(); waitForFinish(app);
+                check(Files.size(third) > 0 && get(app, "statusMessage").equals("Saved export: " + third),
+                        "Saved output must use the exact filename accepted in the chooser");
+                byte[] frame = runOwnedCommand(directory, "ffmpeg", "-v", "error", "-i", third.toString(), "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-");
+                check(frame.length == 48, "Suggested output must decode as the owned 4x4 frame");
+                if (full) app.processVideo(); else app.startExport();
+                check(app.suggestion.getName().equals("repeated export ü-" + full + " (4).mp4"), "The next recording must get another fresh suggestion");
+                if (full) app.processOutputSelected(null); else app.interactiveOutputSelected(null); drainPickerActions(app);
+            } finally { encoder.abort(); check(encoder.awaitCleanup(10, TimeUnit.SECONDS), "Owned suggestion encoder cleanup"); }
+        }
+        if (!System.getProperty("os.name").startsWith("Windows")) {
+            OutputPickerApp app = new OutputPickerApp(); set(app, "video", readyMovie()); set(app, "movieReady", true);
+            Path link = directory.resolve("dangling-export.mp4");
+            Files.createSymbolicLink(link, Path.of("missing-owned-target")); set(app, "exportFilename", link.toString());
+            app.startExport();
+            check(app.suggestion.getName().equals("dangling-export (2).mp4") && Files.isSymbolicLink(link),
+                    "Dangling symlink destinations must count as occupied and remain unchanged");
+            app.interactiveOutputSelected(null); drainPickerActions(app);
+        }
+        for (boolean full : new boolean[]{false, true}) {
+            OutputPickerApp app = new OutputPickerApp(); app.width = 4; app.height = 4;
+            set(app, "video", readyMovie()); set(app, "movieReady", true);
+            Path occupied = directory.resolve("automatic-" + full + ".mp4"); Files.writeString(occupied, "owned exact automatic destination");
+            set(app, "exportFilename", occupied.toString()); Object originalOptions = get(app, "launchOptions");
+            Class<?> options = Class.forName("tom.videoGlitcher.VideoGlitcher$LaunchOptions");
+            Method parse = options.getDeclaredMethod("parse", String[].class); parse.setAccessible(true);
+            try {
+                set(app, "launchOptions", parse.invoke(null, (Object) new String[]{full ? "--auto-process" : "--auto-export"}));
+                if (full) app.processVideo(); else app.startExport();
+                check(app.suggestion == null && get(app, "exportFilename").equals(occupied.toString())
+                                && get(app, "videoExporter") == null && ((String) get(app, "statusMessage")).contains("File already exists"),
+                        "Automatic export flags must keep their exact path and never use chooser suggestions");
+                check(Files.readString(occupied).equals("owned exact automatic destination"), "Automatic export collision must preserve bytes");
+            } finally { set(app, "launchOptions", originalOptions); }
+        }
+        System.out.println("Output picker suggestions passed: live/full repeated save, cancel, collision and decoded output.");
+    }
+
+    private static final class OutputPickerApp extends VideoGlitcher {
+        File suggestion;
+        @Override public void selectOutput(String prompt, String callback, File file) { suggestion = file; }
+    }
+
     private static void testManualFreezeUsesPreGuiFrame() throws Exception {
         VideoGlitcher app = new VideoGlitcher();
         processing.core.PImage preGui = new processing.core.PImage(4, 4);
@@ -240,6 +321,7 @@ public final class VideoGlitcherWorkflowTest {
         @Override public void pause() { }
         @Override public void play() { played = true; }
         @Override public void loop() { played = true; }
+        @Override public void noLoop() { }
         @Override public void jump(float where) { position = where; }
         @Override public boolean isPlaying() { return false; }
         @Override public float time() { return position; }
