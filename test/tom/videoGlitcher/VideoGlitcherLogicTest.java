@@ -10,6 +10,7 @@ public final class VideoGlitcherLogicTest {
     public static void main(String[] args) {
         testMakeExportFilename();
         testEnsureMp4Extension();
+        testExportFilenameSuggestions();
         testComputeVideoFitDoesNotUpscale();
         testComputeVideoFitLetterboxesWideVideo();
         testNormalizeRangesClampsMaximums();
@@ -40,6 +41,33 @@ public final class VideoGlitcherLogicTest {
         assertEquals("/tmp/render.mp4", VideoGlitcherLogic.ensureMp4Extension("/tmp/render.mp4"));
         assertEquals("/tmp/render.MP4", VideoGlitcherLogic.ensureMp4Extension("/tmp/render.MP4"));
         assertEquals("glitched_export.mp4", VideoGlitcherLogic.ensureMp4Extension(""));
+    }
+
+    private static void testExportFilenameSuggestions() {
+        java.nio.file.Path folder = java.nio.file.Path.of("folder with spaces ü (8)");
+        java.util.Set<java.nio.file.Path> occupied = new java.util.HashSet<>();
+        java.nio.file.Path first = folder.resolve("clip.MP4");
+        assertEquals(first.toString(), VideoGlitcherLogic.suggestExportFilename(first.toString(), occupied::contains));
+        occupied.add(first);
+        assertEquals(folder.resolve("clip (2).MP4").toString(), VideoGlitcherLogic.suggestExportFilename(first.toString(), occupied::contains));
+        occupied.add(folder.resolve("clip (2).MP4")); occupied.add(folder.resolve("clip (3).MP4"));
+        assertEquals(folder.resolve("clip (4).MP4").toString(), VideoGlitcherLogic.suggestExportFilename(first.toString(), occupied::contains));
+        assertEquals(folder.resolve("clip (4).MP4").toString(), VideoGlitcherLogic.suggestExportFilename(folder.resolve("clip (3).MP4").toString(), occupied::contains));
+        assertEquals("glitched_export.mp4", VideoGlitcherLogic.suggestExportFilename("", path -> false));
+        assertEquals("chosen.mp4", VideoGlitcherLogic.suggestExportFilename("chosen", path -> false));
+        assertEquals(".hidden (2).mp4", VideoGlitcherLogic.suggestExportFilename(".hidden.mp4", path -> path.toString().equals(".hidden.mp4")));
+        assertEquals("scene-2026 (2).mp4", VideoGlitcherLogic.suggestExportFilename("scene-2026.mp4", path -> path.toString().equals("scene-2026.mp4")));
+        java.util.Set<String> caseInsensitiveNames = java.util.Set.of("clip.mp4", "clip (2).mp4");
+        assertEquals("Clip (3).MP4", VideoGlitcherLogic.suggestExportFilename("Clip.MP4",
+                path -> caseInsensitiveNames.contains(path.toString().toLowerCase(java.util.Locale.ROOT))));
+        String longStem = "x".repeat(260);
+        assertEquals(longStem + " (2).mp4", VideoGlitcherLogic.suggestExportFilename(longStem + ".mp4",
+                path -> path.toString().equals(longStem + ".mp4")));
+        assertEquals("clip (999999999999999999) (2).mp4", VideoGlitcherLogic.suggestExportFilename("clip (999999999999999999).mp4",
+                path -> path.toString().equals("clip (999999999999999999).mp4")));
+        int[] probes = {0};
+        assertEquals(first.toString(), VideoGlitcherLogic.suggestExportFilename(first.toString(), path -> { probes[0]++; return true; }));
+        assertEquals(101, probes[0]);
     }
 
     private static void testComputeVideoFitDoesNotUpscale() {

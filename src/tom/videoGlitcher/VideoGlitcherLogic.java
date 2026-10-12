@@ -1,6 +1,11 @@
 package tom.videoGlitcher;
 
+import java.nio.file.Path;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+
 final class VideoGlitcherLogic {
+    private static final Pattern NUMBERED_EXPORT = Pattern.compile("^(.*) \\(([2-9]|[1-9][0-9]{1,5})\\)$");
 
     private VideoGlitcherLogic() {
     }
@@ -17,6 +22,27 @@ final class VideoGlitcherLogic {
         }
 
         return outputPath.toLowerCase().endsWith(".mp4") ? outputPath : outputPath + ".mp4";
+    }
+
+    /** Chooser hint only: no reservation, and accepting a path still uses no-clobber validation. */
+    static String suggestExportFilename(String outputPath, Predicate<Path> occupied) {
+        Path requested = Path.of(ensureMp4Extension(outputPath));
+        if (!occupied.test(requested)) return requested.toString();
+        String name = requested.getFileName().toString();
+        String stem = name.substring(0, name.length() - 4);
+        String extension = name.substring(name.length() - 4);
+        int firstNumber = 2;
+        var numbered = NUMBERED_EXPORT.matcher(stem);
+        if (numbered.matches()) {
+            stem = numbered.group(1);
+            firstNumber = Integer.parseInt(numbered.group(2)) + 1;
+        }
+        // Bound filesystem probes. A crowded/unavailable folder still allows manual naming.
+        for (int offset = 0; offset < 100; offset++) {
+            Path candidate = requested.resolveSibling(stem + " (" + (firstNumber + offset) + ")" + extension);
+            if (!occupied.test(candidate)) return candidate.toString();
+        }
+        return requested.toString();
     }
 
     static VideoFit computeVideoFit(int viewportWidth, int viewportHeight, int videoWidth, int videoHeight) {

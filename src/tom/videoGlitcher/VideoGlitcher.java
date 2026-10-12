@@ -11,6 +11,8 @@ import controlP5.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -1247,7 +1249,7 @@ public class VideoGlitcher extends PApplet {
             
             selectingProcessOutput = true;
             setStatusMessage("Status: full clip, silent MP4, preview canvas at 24 fps. Choose a NEW filename.");
-            selectOutput("Save full clip (silent MP4, 24 fps) with a new filename:", "processOutputSelected", new File(exportFilename));
+            selectOutput("Save full clip (silent MP4, 24 fps) with a new filename:", "processOutputSelected", suggestedExportFile());
         }
         
         public void processOutputSelected(File selection) {
@@ -1407,6 +1409,17 @@ public class VideoGlitcher extends PApplet {
             return VideoGlitcherLogic.makeExportFilename(sourceName);
         }
         
+        private File suggestedExportFile() {
+            try {
+                return new File(VideoGlitcherLogic.suggestExportFilename(exportFilename,
+                        path -> Files.exists(path, LinkOption.NOFOLLOW_LINKS)));
+            } catch (RuntimeException exception) {
+                // A hint must never prevent the user from choosing another folder or name.
+                println("Could not suggest a new output filename: " + exception.getMessage());
+                return new File(exportFilename);
+            }
+        }
+
         private String normalizeExportOutputPath(File selection) {
             return VideoGlitcherLogic.ensureMp4Extension(selection.getAbsolutePath());
         }
@@ -2363,7 +2376,7 @@ public class VideoGlitcher extends PApplet {
                     }
                     selectingInteractiveOutput = true;
                     setStatusMessage("Status: live recording, silent MP4, preview canvas at 24 fps. Choose a NEW filename.");
-                    selectOutput("Save live recording (silent MP4, 24 fps) with a new filename:", "interactiveOutputSelected", new File(exportFilename));
+                    selectOutput("Save live recording (silent MP4, 24 fps) with a new filename:", "interactiveOutputSelected", suggestedExportFile());
                 }
 
                 public void interactiveOutputSelected(File selection) {
