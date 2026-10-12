@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,7 +21,8 @@ final class FfmpegVideoExporter {
     private final Process process;
     private final OutputStream stdin;
     private final FrameSpec frameSpec;
-    private final byte[] frameBuffer;
+    private final FrameBuffers frameBuffers;
+    private boolean producerActive;
     private final Path outputPath;
     private final Path temporaryPath;
     private final StringBuilder diagnostics = new StringBuilder();
@@ -41,10 +43,12 @@ final class FfmpegVideoExporter {
         this.frameSpec = frameSpec;
         this.outputPath = outputPath;
         this.temporaryPath = temporaryPath;
-        this.frameBuffer = new byte[Math.multiplyExact(Math.multiplyExact(frameSpec.exportWidth(), frameSpec.exportHeight()), 3)];
+        int frameBytes = Math.multiplyExact(Math.multiplyExact(frameSpec.exportWidth(), frameSpec.exportHeight()), 3);
         // Allow short encoder startup/scheduling delays without unbounded buffering. At least one frame fits.
-        int queueCapacity = Math.max(1, Math.min(48, (64 * 1024 * 1024) / frameBuffer.length));
+        int queueCapacity = Math.max(1, Math.min(48, (64 * 1024 * 1024) / frameBytes));
         this.pendingFrames = new ArrayBlockingQueue<>(queueCapacity);
+        // Pending queue + one producer + one consumer, allocated lazily. 64 MiB is a queue target, not total memory.
+        this.frameBuffers = new FrameBuffers(frameBytes, queueCapacity + 2);
         diagnosticReader = new Thread(() -> readDiagnostics(process.getErrorStream()), "ffmpeg-diagnostics");
         diagnosticReader.setDaemon(true);
         diagnosticReader.start();
@@ -119,34 +123,60 @@ final class FfmpegVideoExporter {
     }
 
     void writeFrame(int[] argbPixels) throws IOException {
-        if (state.get() != State.OPEN) throw new IOException("This export is already closing. Start a new export.");
-        if (writerFailure != null) throw writerFailure;
-        if (argbPixels == null || argbPixels.length < (long) frameSpec.sourceWidth() * frameSpec.sourceHeight()) {
-            throw new IOException("Incomplete video frame; export stopped safely.");
-        }
-        int index = 0;
-        for (int y = 0; y < frameSpec.exportHeight(); y++) {
-            int row = y * frameSpec.sourceWidth();
-            for (int x = 0; x < frameSpec.exportWidth(); x++) {
-                int pixel = argbPixels[row + x];
-                frameBuffer[index++] = (byte) (pixel >> 16);
-                frameBuffer[index++] = (byte) (pixel >> 8);
-                frameBuffer[index++] = (byte) pixel;
+        byte[] frame = null;
+        boolean producerOwned = false;
+        boolean queued = false;
+        try {
+            synchronized (frameBuffers) {
+                if (state.get() != State.OPEN) throw new IOException("This export is already closing. Start a new export.");
+                if (writerFailure != null) throw writerFailure;
+                if (argbPixels == null || argbPixels.length < (long) frameSpec.sourceWidth() * frameSpec.sourceHeight())
+                    throw new IOException("Incomplete video frame; export stopped safely.");
+                if (producerActive) throw new IOException("An export frame is already being prepared; concurrent producers are not supported.");
+                producerActive = true;
+                producerOwned = true;
+                frame = frameBuffers.acquire();
+            }
+            int index = 0;
+            for (int y = 0; y < frameSpec.exportHeight(); y++) {
+                int row = y * frameSpec.sourceWidth();
+                for (int x = 0; x < frameSpec.exportWidth(); x++) {
+                    int pixel = argbPixels[row + x];
+                    frame[index++] = (byte) (pixel >> 16);
+                    frame[index++] = (byte) (pixel >> 8);
+                    frame[index++] = (byte) pixel;
+                }
+            }
+            // Linearise handoff with finish/cancel. Packing and all pipe I/O stay outside this monitor.
+            synchronized (frameBuffers) {
+                if (state.get() != State.OPEN) throw new IOException("This export is already closing. Start a new export.");
+                if (!pendingFrames.offer(frame))
+                    throw new IOException("Encoder cannot keep up; export stopped without dropping frames. Try a smaller preview canvas or a faster local drive.");
+                queued = true;
+                framesWritten++;
+            }
+        } finally {
+            if (producerOwned) synchronized (frameBuffers) {
+                if (!queued && frame != null) frameBuffers.release(frame);
+                producerActive = false;
+                frameBuffers.notifyAll();
             }
         }
-        // Never wait for ffmpeg on the Processing/UI thread. A bounded queue prevents unlimited memory use.
-        if (!pendingFrames.offer(frameBuffer.clone())) {
-            throw new IOException("Encoder cannot keep up; export stopped without dropping frames. Try a smaller preview canvas or a faster local drive.");
-        }
-        framesWritten++;
     }
 
     private void writeQueuedFrames() {
         try {
             while (state.get() != State.ABORTED) {
                 byte[] frame = pendingFrames.poll(25, TimeUnit.MILLISECONDS);
-                if (frame != null) stdin.write(frame);
-                else if (state.get() == State.FINISHING) break;
+                if (frame != null) {
+                    try { stdin.write(frame); }
+                    finally { frameBuffers.release(frame); }
+                }
+                else synchronized (frameBuffers) {
+                    // A producer may enqueue between the timed poll and this state check.
+                    // FINISHING plus empty under the handoff monitor rules out a lost accepted frame.
+                    if (state.get() == State.FINISHING && pendingFrames.isEmpty()) break;
+                }
             }
             stdin.close();
         } catch (IOException exception) {
@@ -164,14 +194,19 @@ final class FfmpegVideoExporter {
     }
 
     void finish(long timeout, TimeUnit unit) throws IOException, InterruptedException {
-        if (!state.compareAndSet(State.OPEN, State.FINISHING)) throw new IOException("This export is already closing.");
+        synchronized (frameBuffers) {
+            if (!state.compareAndSet(State.OPEN, State.FINISHING)) throw new IOException("This export is already closing.");
+        }
         long deadline = System.nanoTime() + unit.toNanos(timeout);
         try {
+            if (!awaitProducerStopped(deadline)) throw new IOException("Frame preparation did not finish in time; export stopped safely.");
             // Includes pipe writes AND stdin.close, not merely the process exit wait.
-            if (!writerStopped.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)
-                    || !process.waitFor(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)) {
+            if (!writerStopped.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)) {
                 throw new IOException("ffmpeg did not finish in time. Retry a shorter export or check the output drive.");
             }
+            frameBuffers.close(); // No producer/writer can reuse arrays while encoder/container finalisation continues.
+            if (!process.waitFor(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS))
+                throw new IOException("ffmpeg did not finish in time. Retry a shorter export or check the output drive.");
             diagnosticReader.join(1000);
             if (process.exitValue() != 0) throw new IOException("ffmpeg failed (" + process.exitValue() + "). " + diagnosticSummary());
             if (writerFailure != null) throw writerFailure;
@@ -205,12 +240,15 @@ final class FfmpegVideoExporter {
 
     /** Non-blocking cancellation. False means publication has already committed or started. */
     boolean abort() {
-        State current;
-        do {
-            current = state.get();
-            if (current == State.ABORTED) return true;
-            if (current == State.FINISHED || current == State.PUBLISHING) return false;
-        } while (!state.compareAndSet(current, State.ABORTED));
+        synchronized (frameBuffers) {
+            State current;
+            do {
+                current = state.get();
+                if (current == State.ABORTED) return true;
+                if (current == State.FINISHED || current == State.PUBLISHING) return false;
+            } while (!state.compareAndSet(current, State.ABORTED));
+            closeFrameBuffers();
+        }
         Thread cleanup = new Thread(this::cleanUp, "ffmpeg-cancel-cleanup");
         // Non-daemon: normal JVM shutdown gives cancellation its bounded cleanup opportunity.
         cleanup.start();
@@ -218,14 +256,16 @@ final class FfmpegVideoExporter {
     }
 
     private void cleanUp() {
-        pendingFrames.clear();
+        synchronized (frameBuffers) { closeFrameBuffers(); }
         // PATH may resolve to a wrapper script. Terminate its current encoder descendants as well.
         process.descendants().forEach(child -> { if (child.isAlive()) child.destroyForcibly(); });
         process.destroyForcibly();
         frameWriter.interrupt();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         try {
             process.waitFor(5, TimeUnit.SECONDS);
-            writerStopped.await(5, TimeUnit.SECONDS);
+            writerStopped.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+            awaitProducerStopped(deadline);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }
@@ -243,7 +283,56 @@ final class FfmpegVideoExporter {
         return cleanupFinished.await(timeout, unit);
     }
 
-    long framesWritten() { return framesWritten; }
+    long framesWritten() { synchronized (frameBuffers) { return framesWritten; } }
+
+    private void closeFrameBuffers() {
+        frameBuffers.close();
+        byte[] frame;
+        while ((frame = pendingFrames.poll()) != null) frameBuffers.release(frame);
+    }
+
+    private boolean awaitProducerStopped(long deadline) throws InterruptedException {
+        synchronized (frameBuffers) {
+            while (producerActive) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) return false;
+                TimeUnit.NANOSECONDS.timedWait(frameBuffers, remaining);
+            }
+            return true;
+        }
+    }
+
+    // Resource counters describe owned RGB arrays, not total JVM/native memory or throughput.
+    int allocatedFrameBuffers() { synchronized (frameBuffers) { return frameBuffers.allocated; } }
+    int retainedFrameBuffers() { synchronized (frameBuffers) { return frameBuffers.free.size() + frameBuffers.leased; } }
+    int frameBufferCapacity() { return frameBuffers.capacity; }
+
+    private static final class FrameBuffers {
+        private final int bytes;
+        private final int capacity;
+        private final ArrayDeque<byte[]> free = new ArrayDeque<>();
+        private int allocated;
+        private int leased;
+        private boolean closed;
+        FrameBuffers(int bytes, int capacity) { this.bytes = bytes; this.capacity = capacity; }
+        synchronized byte[] acquire() throws IOException {
+            if (closed) throw new IOException("This export is already closing.");
+            byte[] frame = free.pollFirst();
+            if (frame == null) {
+                if (allocated >= capacity) throw new IOException("Encoder cannot keep up; frame buffer capacity reached.");
+                frame = new byte[bytes];
+                allocated++;
+            }
+            leased++;
+            return frame;
+        }
+        synchronized void release(byte[] frame) {
+            // Failed producer handoff, completed/failed pipe write, or cancelled queue drain only.
+            leased--;
+            if (!closed) free.addLast(frame);
+        }
+        synchronized void close() { closed = true; free.clear(); }
+    }
 
     private void readDiagnostics(InputStream input) {
         byte[] buffer = new byte[1024];
