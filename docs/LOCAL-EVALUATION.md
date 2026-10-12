@@ -1,11 +1,14 @@
 # Local evaluation: first session and remaining delivery gates
 
-Checked 6 October 2026 against draft PR #2, source base `31e439bf616bad22e13242d485c8b3e5e5439840`. This is an internal evaluation checklist, not an installer or a supported-platform claim. The historical v1.1.3 downloads do not include this draft's export/workflow fixes. Do not use them as evidence that the candidate was delivered.
+Initial checklist checked 6 October 2026 against source base `31e439bf616bad22e13242d485c8b3e5e5439840`; prerequisite guidance updated 12 October 2026 after input-preflight integration at `1ec862c7236241a34ca257e1659adb2deb012770`. This is an internal evaluation checklist, not an installer or a supported-platform claim. The historical v1.1.3 downloads do not include the current source's export/workflow fixes. Do not use them as evidence that the candidate was delivered.
+
+The later native recording investigation ended Killed/137, and its controlled retry stopped under a resource guard. Further native launches are stopped pending a separately approved bounded diagnostic opportunity. The non-launching prerequisite command below is safe to use within that stop; it does not clear the subsequent interactive acceptance steps. See [the native checkpoint](NATIVE-REWIND-CHECKPOINT-2026-10-07.md).
 
 ## Before starting
 
 - Use a complete checkout of the candidate on a desktop you control. Keep the terminal open to capture errors. Nothing here needs a sign-in, customer data or an uploaded video.
 - Use **JDK 21** to build and **Java 21 with desktop/AWT support** to run. Existing release CI uses JDK 21 without `--release`, so Java 17 compatibility cannot be promised. The release ZIPs include neither Java nor ffmpeg.
+- From the checkout, run `python3 scripts/diagnose_prerequisites.py` (Windows: `py -3 scripts/diagnose_prerequisites.py`). It names the Java/ffmpeg selected by this terminal and checks version/module/encoder metadata without building or opening the app. `FOUND` means only an advertised prerequisite; `MISSING` gives the absent requirement; `UNKNOWN` means the command failed, timed out or returned unrecognised/oversized output. Read the printed paths if a different Java/ffmpeg was expected. No software is installed, configured or downloaded. The README describes exit codes, probe limits and wrapper-cleanup limits.
 - Check `java -version`, `javac -version`, `ffmpeg -version` and `ffmpeg -hide_banner -encoders`. The last output must include `libx264`. Having a program named ffmpeg is insufficient. For recorded inspection, also use `ffprobe`.
 - Python 3.11+ is needed for the checks/internal packager. Internal staging is POSIX-only and fails closed without directory-fd/no-follow capabilities; this restriction does not imply the Windows application is accepted or rejected. VS Code is optional. The Linux source launcher additionally needs Bash, `ldd` and a compatible native desktop runtime.
 - Use an ordinary local filesystem supporting hard links for output. Keep original clips and previous outputs outside the disposable test directory. Do not use a network/removable/cloud-synchronised folder for the first test.

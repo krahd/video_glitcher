@@ -64,6 +64,16 @@ For version-pinned downloads and release-specific details, open the release page
 - `ffmpeg` on your `PATH`, built with `libx264`, for MP4 export
 - Native video runtime files are already vendored for `macos-aarch64`, `macos-x86_64`, `linux-amd64`, and `windows-amd64`
 
+Before building or opening the app, check the Java and encoder commands selected by your terminal:
+
+```sh
+python3 scripts/diagnose_prerequisites.py
+```
+
+On Windows, use `py -3 scripts/diagnose_prerequisites.py` with Python 3.11+ installed. The diagnostic reports the executable paths, Java 21+ version metadata, `java.desktop` module and advertised `libx264` encoder. It launches only installed Java/ffmpeg metadata commands, never the app or a video. `FOUND` is not a working-app guarantee: AWT/display, native GStreamer/GPU, decoding and output storage remain untested. Missing prerequisites return exit 1; inconclusive checks return exit 2 unless another prerequisite is missing; exit 0 means only that the advertised prerequisites were found. No software is installed or configured.
+
+Each metadata process has a five-second wait limit after startup and a 64 KiB captured-output cap; timeouts, oversized/malformed output and command failures remain `UNKNOWN`. Executable discovery and process creation are not timed. POSIX cleanup targets the probe's process group; Windows cleanup covers only the direct child, so wrapper descendants are not guaranteed to stop. Use normal installed Java/ffmpeg commands rather than custom wrappers. The existing native-retry stop remains in force; see the [local evaluation checklist](docs/LOCAL-EVALUATION.md).
+
 ## Build
 
 Build from the project root with:
