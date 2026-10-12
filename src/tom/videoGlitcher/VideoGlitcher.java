@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -1527,21 +1528,67 @@ public class VideoGlitcher extends PApplet {
             drawH = fit.drawH();
         }
         
-        private void drawNoVideoScreen() {
-            fill(255);
-            textAlign(CENTER, CENTER);
-            textSize(28);
-            text("No video loaded", width * 0.5f, height * 0.5f - 20);
-            
-            textSize(18);
-            text("Press L to load a video. Press ? for the workflow guide.", width * 0.5f, height * 0.5f + 20);
-            textSize(14);
-            text("Choose a preset, hold C to compare, then P for a full-clip export.", width * 0.5f, height * 0.5f + 48);
-            text("Exports are silent MP4 at 24 fps, using the preview canvas size.", width * 0.5f, height * 0.5f + 72);
-            
-            if (selectingVideo) {
-                text("File dialog open...", width * 0.5f, height * 0.5f + 98);
+        private record EmptyScreenLine(String text, float size, float advance) {}
+
+        private void appendEmptyScreenLines(ArrayList<EmptyScreenLine> lines, String message, float size, float maxWidth) {
+            textSize(size);
+            String line = "";
+            for (String word : message.split(" ")) {
+                String next = line.isEmpty() ? word : line + " " + word;
+                if (!line.isEmpty() && textWidth(next) > maxWidth) {
+                    lines.add(new EmptyScreenLine(line, size, size + 6));
+                    line = word;
+                } else {
+                    line = next;
+                }
+                // Only relevant on a desktop too small for the existing control panel.
+                if (textWidth(line) > maxWidth) line = fitTextToWidth(line, maxWidth);
             }
+            if (!line.isEmpty()) lines.add(new EmptyScreenLine(line, size, size + 6));
+        }
+
+        private void drawNoVideoScreen() {
+            if (showGuide) return; // The opaque guide owns the visible instructions while open.
+            float left = showGUI ? max(24, panelX + panelW + 24) : 24;
+            float right = width - 24;
+            float top = 24;
+            float bottom = showHUD ? hudTopY() - 12 : height - 24;
+            float availableWidth = right - left;
+            float availableHeight = bottom - top;
+            if (availableWidth <= 0 || availableHeight < 24) return;
+
+            pushStyle();
+            fill(255);
+            textAlign(CENTER, TOP);
+            ArrayList<EmptyScreenLine> lines = new ArrayList<>();
+            appendEmptyScreenLines(lines, "Press L to load a video.", 18, availableWidth);
+            if (selectingVideo) appendEmptyScreenLines(lines, "File dialog open...", 14, availableWidth);
+            float primaryHeight = 0;
+            for (EmptyScreenLine line : lines) primaryHeight += line.advance();
+            textSize(28);
+            if (textWidth("No video loaded") <= availableWidth && primaryHeight + 40 <= availableHeight) {
+                lines.add(0, new EmptyScreenLine("No video loaded", 28, 40));
+            }
+            if (availableWidth >= 160) {
+                appendEmptyScreenLines(lines, "Press ? for the workflow guide.", 14, availableWidth);
+                appendEmptyScreenLines(lines, "Choose a preset, hold C to compare, then P for a full-clip export.", 14, availableWidth);
+                appendEmptyScreenLines(lines, "Exports are silent MP4 at 24 fps, using the preview canvas size.", 14, availableWidth);
+            } else {
+                appendEmptyScreenLines(lines, "Press ? for guide.", 14, availableWidth);
+            }
+            float contentHeight = 0;
+            for (EmptyScreenLine line : lines) contentHeight += line.advance();
+            // Keep Load first if unsupported small geometry cannot hold all secondary guidance.
+            while (!lines.isEmpty() && contentHeight > availableHeight) {
+                contentHeight -= lines.remove(lines.size() - 1).advance();
+            }
+            float y = top + (availableHeight - contentHeight) / 2;
+            for (EmptyScreenLine line : lines) {
+                textSize(line.size());
+                text(line.text(), (left + right) / 2, y);
+                y += line.advance();
+            }
+            popStyle();
         }
         
         private void drawWorkflowGuide() {

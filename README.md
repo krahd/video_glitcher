@@ -296,6 +296,7 @@ See [candidate validation and remaining product gates](docs/PRODUCT-CANDIDATE-20
 
 - Clicking inside the GUI does not trigger the background file picker.
 - Glitching starts disabled before the first video is loaded so the empty-state text stays readable.
+- Initial load/guide instructions use the canvas space beside visible controls and above the HUD. Text wraps to the measured spare width; hiding the controls recentres it. Very small unsupported canvases prioritise Load/guide prompts and omit secondary copy rather than drawing through the panel. This does not resize the controls or establish native desktop/DPI support.
 - After the first successful video load, glitching turns on automatically and then follows the user's chosen on/off state.
 - `Export Start` / `Export Stop` stay in the interactive lane: you can let the preview run, change settings on the fly, and manually finish the MP4.
 - `Process Full` opens a save dialog, snapshots the current glitch settings, rewinds to frame 0, renders the entire clip once, and finishes the MP4 automatically at the playback end.
