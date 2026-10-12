@@ -288,6 +288,7 @@ See [candidate validation and remaining product gates](docs/PRODUCT-CANDIDATE-20
 - `Process Full` opens a save dialog, snapshots the current glitch settings, rewinds to frame 0, renders the entire clip once, and finishes the MP4 automatically at the playback end.
 - The GUI is layout-aware: compact mode keeps the panel shorter for quick preset-driven use, while full mode exposes the deeper digital and analogue tuning controls.
 - The full-height panel now stops at the HUD/status bar instead of running behind it, and the footer transport row uses clearer labels such as `REWIND`.
+- During capture, the HUD reserves measured space for its existing frame/output-seconds counter so a long path cannot push it off the 960px canvas. Displayed paths/status may be abbreviated; full stored status, destination and existing console messages are unchanged. An unusually narrow canvas prioritises the status line. Saving, failure and cancellation do not show stale live counts or a guessed completion percentage.
 - When the full panel grows beyond the visible space, use the mouse wheel while the pointer is over the GUI to scroll the control list.
 - If the fitted video does not fill the screen, black mattes are drawn around it so glitches stay confined to the visible video area.
 - The app now calls `PApplet.hideMenuBar()` before entering Processing present mode so fullscreen explicitly covers the macOS menu bar. Windowed and smoke modes skip menu-bar hiding.

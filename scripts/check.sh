@@ -19,6 +19,7 @@ mkdir -p bin test-bin
 "${compiler[@]}" -cp "bin${separator}${classpath}" -d test-bin src/tom/videoGlitcher/VideoGlitcherLogic.java src/tom/videoGlitcher/FfmpegVideoExporter.java test/tom/videoGlitcher/*.java
 java -cp test-bin tom.videoGlitcher.VideoGlitcherLogicTest
 java -Djava.awt.headless=true -cp "bin${separator}test-bin${separator}${classpath}" tom.videoGlitcher.VideoGlitcherWindowedTest
+java -Djava.awt.headless=true -cp "bin${separator}test-bin${separator}${classpath}" tom.videoGlitcher.VideoGlitcherHudTest
 python3 -m unittest discover -s test -p 'test_*.py'
 if [[ "${1:-}" == "--with-ffmpeg" ]]; then
   command -v ffmpeg >/dev/null
