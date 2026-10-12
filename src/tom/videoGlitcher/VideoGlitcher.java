@@ -1234,7 +1234,14 @@ public class VideoGlitcher extends PApplet {
             if (selectingVideo || selectingProcessOutput || selectingInteractiveOutput || pendingExportFinish != null || isFullProcessExportActive())
                 return;
             selectingVideo = true;
-            selectInput("Select a video file:", "videoSelected");
+            try {
+                selectInput("Select a video file:", "videoSelected");
+            } catch (RuntimeException exception) {
+                selectingVideo = false;
+                setVideoLoadStatus("Could not open video picker: " + exception.getMessage()
+                        + (exporting ? ". Current recording continues." : ". Preview unchanged.")
+                        + " Press L to try again.");
+            }
         }
         
         private void promptForProcessOutput() {
@@ -1249,7 +1256,13 @@ public class VideoGlitcher extends PApplet {
             
             selectingProcessOutput = true;
             setStatusMessage("Status: full clip, silent MP4, preview canvas at 24 fps. Choose a NEW filename.");
-            selectOutput("Save full clip (silent MP4, 24 fps) with a new filename:", "processOutputSelected", suggestedExportFile());
+            try {
+                selectOutput("Save full clip (silent MP4, 24 fps) with a new filename:", "processOutputSelected", suggestedExportFile());
+            } catch (RuntimeException exception) {
+                selectingProcessOutput = false;
+                setStatusMessage("Could not open export picker: " + exception.getMessage()
+                        + ". Preview unchanged. Press P to try again.");
+            }
         }
         
         public void processOutputSelected(File selection) {
@@ -2376,7 +2389,13 @@ public class VideoGlitcher extends PApplet {
                     }
                     selectingInteractiveOutput = true;
                     setStatusMessage("Status: live recording, silent MP4, preview canvas at 24 fps. Choose a NEW filename.");
-                    selectOutput("Save live recording (silent MP4, 24 fps) with a new filename:", "interactiveOutputSelected", suggestedExportFile());
+                    try {
+                        selectOutput("Save live recording (silent MP4, 24 fps) with a new filename:", "interactiveOutputSelected", suggestedExportFile());
+                    } catch (RuntimeException exception) {
+                        selectingInteractiveOutput = false;
+                        setStatusMessage("Could not open export picker: " + exception.getMessage()
+                                + ". Preview unchanged. Press E to try again.");
+                    }
                 }
 
                 public void interactiveOutputSelected(File selection) {

@@ -36,6 +36,7 @@ public final class VideoGlitcherWorkflowTest {
         Path directory = Files.createTempDirectory("video-glitcher-workflow-");
         try {
             testOutputPickerSuggestions(directory);
+            VideoGlitcherPickerFailureTest.run(directory);
             testSmokeTimeout(directory);
             VideoGlitcherLifecycleTest.run(directory);
             VideoGlitcherExportStartTest.run(directory);
