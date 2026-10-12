@@ -227,7 +227,7 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
 
 On Windows, use the semicolon-separated classpath from the [source run instructions](docs/LOCAL-EVALUATION.md); append `--help` after the main class. No GStreamer native-path properties are needed for this help-only route. Exact `--help` anywhere takes precedence, including alongside `--video`, `--windowed` or smoke/export options: it prints once and returns without loading the clip or exporting. Other unknown options remain ignored; `-h` and `--help=value` are not aliases.
 
-The app/core classes still initialise ordinary Java/OS metadata. This is not a prerequisite or native-acceptance check; help only points to the optional diagnostic command. Use direct Java for this no-probe route: `scripts/run-linux.sh` performs its own runtime materialisation/dependency preflight before invoking Java, and is unchanged. Historical v1.1.3 binaries do not implement the new help flag.
+The app/core classes still initialise ordinary Java/OS metadata. This is not a prerequisite or native-acceptance check; help only points to the optional diagnostic command. On Linux, `bash scripts/run-linux.sh --help` now forwards exact help directly to the same Java path before resolving or materialising a native runtime or running `ldd`. Compiled classes and Java are still required; normal, smoke and help-lookalike arguments retain all existing native preflights. Argument boundaries and the Java exit status are preserved. Historical v1.1.3 binaries do not implement the new help flag.
 
 ### Optional windowed preview (current source)
 
