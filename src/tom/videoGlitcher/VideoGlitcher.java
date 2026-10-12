@@ -1174,17 +1174,21 @@ public class VideoGlitcher extends PApplet {
                 return;
             }
             
-            video.jump(0);
-            if (paused) {
-                pausedFrame = snapshotSourceFrame(video);
-                video.pause();
-                setStatusMessage("Status: rewind requested; preview updates on Play");
-            } else {
-                startPlayback();
-                setStatusMessage("Status: previewing " + currentVideoName);
+            try {
+                video.jump(0);
+                if (paused) {
+                    pausedFrame = snapshotSourceFrame(video);
+                    video.pause();
+                    setStatusMessage("Status: rewind requested; preview updates on Play");
+                } else {
+                    startPlayback();
+                    setStatusMessage("Status: previewing " + currentVideoName);
+                }
+
+                updatePausePlayButton();
+            } catch (RuntimeException exception) {
+                recoverTransportFailure("rewind", exception);
             }
-            
-            updatePausePlayButton();
         }
         
         public void togglePlaybackMode() {
@@ -1192,18 +1196,22 @@ public class VideoGlitcher extends PApplet {
                 return;
             }
             
-            loopPlayback = !loopPlayback;
-            
-            if (video != null && !paused) {
-                if (loopPlayback) {
-                    video.loop();
-                } else {
-                    video.noLoop();
+            try {
+                loopPlayback = !loopPlayback;
+
+                if (video != null && !paused) {
+                    if (loopPlayback) {
+                        video.loop();
+                    } else {
+                        video.noLoop();
+                    }
                 }
+
+                setStatusMessage("Status: playback mode " + (loopPlayback ? "looping" : "play once"));
+                updatePlaybackModeButton();
+            } catch (RuntimeException exception) {
+                recoverTransportFailure("change playback mode", exception);
             }
-            
-            setStatusMessage("Status: playback mode " + (loopPlayback ? "looping" : "play once"));
-            updatePlaybackModeButton();
         }
         
         public void toggleGlitching() {
@@ -2584,27 +2592,53 @@ public class VideoGlitcher extends PApplet {
                     }
                 }
                 
+                private void recoverTransportFailure(String action, RuntimeException exception) {
+                    String failure = "Playback could not " + action + ": " + exception.getMessage();
+                    if (pendingExportFinish != null) {
+                        // The captured frames already belong to the background finish. A failed
+                        // preview control must not abort it or replace its eventual saved result.
+                        retireFailedPreview();
+                        setStatusMessage(failure + ". Export is still finishing; X cancels before final save. Press L to reload after saving.");
+                        println(failure);
+                    } else {
+                        failure += ". Press L to reload the clip.";
+                        if (exporting) {
+                            // Stop owning the encoder before attempting best-effort native cleanup.
+                            failExport("Export failed; no output saved. " + failure, false);
+                        } else {
+                            setStatusMessage(failure);
+                            println(failure);
+                        }
+                        retireFailedPreview();
+                    }
+                    updatePlaybackModeButton();
+                }
+
                 private void togglePausePlay() {
                     if (video == null) return;
                     if (!movieReady) {
                         setStatusMessage("Video is still loading; pause is available after its first frame.");
                         return;
                     }
-                    paused = !paused;
-                    if (paused) {
-                        pausedFrame = snapshotSourceFrame(video);
-                        video.pause();
-                        setStatusMessage("Status: paused " + currentVideoName);
-                    } else {
-                        pausedFrame = null;
-                        if (isAtPlaybackEnd()) {
-                            video.jump(0);
+                    try {
+                        paused = !paused;
+                        if (paused) {
+                            pausedFrame = snapshotSourceFrame(video);
+                            video.pause();
+                            setStatusMessage("Status: paused " + currentVideoName);
+                        } else {
+                            pausedFrame = null;
+                            if (isAtPlaybackEnd()) {
+                                video.jump(0);
+                            }
+                            startPlayback();
+                            setStatusMessage("Status: previewing " + currentVideoName);
                         }
-                        startPlayback();
-                        setStatusMessage("Status: previewing " + currentVideoName);
+
+                        updatePausePlayButton();
+                    } catch (RuntimeException exception) {
+                        recoverTransportFailure("pause or resume", exception);
                     }
-                    
-                    updatePausePlayButton();
                 }
                 
                 private void startPlayback() {
