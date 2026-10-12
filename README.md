@@ -216,6 +216,19 @@ java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library
   tom.videoGlitcher.VideoGlitcher
 ```
 
+### Command-line help (current source)
+
+After building, print the supported flags/defaults without opening the app or probing Java/ffmpeg/native prerequisites:
+
+```sh
+java -cp "bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*" \
+  tom.videoGlitcher.VideoGlitcher --help
+```
+
+On Windows, use the semicolon-separated classpath from the [source run instructions](docs/LOCAL-EVALUATION.md); append `--help` after the main class. No GStreamer native-path properties are needed for this help-only route. Exact `--help` anywhere takes precedence, including alongside `--video`, `--windowed` or smoke/export options: it prints once and returns without loading the clip or exporting. Other unknown options remain ignored; `-h` and `--help=value` are not aliases.
+
+The app/core classes still initialise ordinary Java/OS metadata. This is not a prerequisite or native-acceptance check; help only points to the optional diagnostic command. Use direct Java for this no-probe route: `scripts/run-linux.sh` performs its own runtime materialisation/dependency preflight before invoking Java, and is unchanged. Historical v1.1.3 binaries do not implement the new help flag.
+
 ### Optional windowed preview (current source)
 
 Append the exact `--windowed` flag after `tom.videoGlitcher.VideoGlitcher` in your platform's source run command. The Linux source launcher forwards it with `bash scripts/run-linux.sh --windowed`. Existing portable launchers also forward arguments, but historical v1.1.3 binaries do not implement this new flag.

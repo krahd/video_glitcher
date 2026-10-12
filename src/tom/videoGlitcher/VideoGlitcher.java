@@ -11,6 +11,7 @@ import controlP5.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.util.HashMap;
@@ -84,7 +85,51 @@ public class VideoGlitcher extends PApplet {
     private static final int WINDOW_WIDTH = 960;
     private static final int WINDOW_HEIGHT = 540;
 
+    private static final String LAUNCH_HELP = """
+        video_glitcher (current source)
+        Usage: java [classpath and platform options] tom.videoGlitcher.VideoGlitcher [options]
+
+          --help              Print this help once and return without opening the app or probing tools.
+                              Exact --help anywhere takes precedence over every other option.
+          --windowed          Interactive 960x540 canvas with normal controls/HUD; default is fullscreen.
+          --video=PATH        Load a local video at startup; quote the whole argument if it has spaces.
+          --preset=NAME       Initial preset (default: Cinematic). Names: Subtle, Cinematic,
+                              Corrupted File, Broken Codec, Extreme, VHS Decay, Old Digicam.
+
+        Smoke-only options (choose at most one automatic export mode):
+          --smoke-test        Existing non-interactive 960x540 mode: hides controls/HUD and exits.
+          --auto-export       With --smoke-test and --video, capture a limited live export.
+          --auto-process      With --smoke-test and --video, process the full clip once.
+          --smoke-frames=N    Positive draw-frame budget for smoke mode (default: 60).
+          --export-frames=N   Positive frame limit for --auto-export (default: 48).
+        Invalid frame values fall back to their defaults. Unknown options remain ignored.
+        --windowed alone is interactive; combining it with --smoke-test keeps smoke behaviour.
+
+        Output: silent H.264 MP4 at 24 fps, using the preview canvas including black mattes.
+        Existing files are never overwritten. Full-process capture is not frame-accurate offline rendering.
+        Requirements for normal launch: Java 21 with desktop/AWT support, platform-compatible
+        Processing/GStreamer/OpenGL native runtime, and system ffmpeg with libx264 for export.
+        A compatible desktop and local output filesystem with hard-link support are required.
+
+        Optional non-launching prerequisite metadata report from a source checkout:
+          python3 scripts/diagnose_prerequisites.py
+          Windows: py -3 scripts/diagnose_prerequisites.py
+        Help does not run this report and does not validate native playback, GPU, dialogs or export.
+        See README.md and docs/LOCAL-EVALUATION.md; current native-retry restrictions still apply.
+        """;
+
+    static boolean printLaunchHelp(String[] args, PrintStream output) {
+        for (String arg : args) {
+            if ("--help".equals(arg)) {
+                output.print(LAUNCH_HELP);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void main(String[] args) {
+        if (printLaunchHelp(args, System.out)) return;
         launchOptions = LaunchOptions.parse(args);
         // Bundled GStreamer libraries must not be loaded into GTK's native file chooser.
         // Swing keeps Linux save/load dialogs in the Java UI without that native ABI collision.
