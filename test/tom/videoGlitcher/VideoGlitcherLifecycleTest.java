@@ -212,6 +212,7 @@ public final class VideoGlitcherLifecycleTest {
     }
 
     private static void select(LifecycleApp app, Path file) throws Exception {
+        if (!Files.exists(file)) Files.writeString(file, "owned lifecycle source", java.nio.file.StandardOpenOption.CREATE_NEW);
         set(app, "selectingVideo", true); app.videoSelected(file.toFile()); drain(app);
     }
     @SuppressWarnings("unchecked") private static void drain(VideoGlitcher app) throws Exception {
