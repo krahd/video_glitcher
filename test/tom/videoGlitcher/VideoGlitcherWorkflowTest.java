@@ -37,6 +37,7 @@ public final class VideoGlitcherWorkflowTest {
         try {
             testOutputPickerSuggestions(directory);
             VideoGlitcherPickerFailureTest.run(directory);
+            VideoGlitcherFrameFailureTest.run(directory);
             testSmokeTimeout(directory);
             VideoGlitcherLifecycleTest.run(directory);
             VideoGlitcherExportStartTest.run(directory);
