@@ -1594,7 +1594,7 @@ public class VideoGlitcher extends PApplet {
         }
         
         private String fitTextToWidth(String text, float maxWidth) {
-            if (text == null || text.isEmpty()) {
+            if (text == null || text.isEmpty() || maxWidth <= 0) {
                 return "";
             }
             
@@ -1603,9 +1603,10 @@ public class VideoGlitcher extends PApplet {
             }
             
             String ellipsis = "...";
+            if (textWidth(ellipsis) > maxWidth) return "";
             int end = text.length();
             while (end > 0 && textWidth(text.substring(0, end) + ellipsis) > maxWidth) {
-                end--;
+                end = text.offsetByCodePoints(end, -1);
             }
             
             return end <= 0 ? ellipsis : text.substring(0, end) + ellipsis;
@@ -1639,8 +1640,18 @@ public class VideoGlitcher extends PApplet {
             + " | " + gui
             + " | C compare | ? guide | X cancel output | E live | P full clip";
             
-            String progress = exporting && videoExporter != null ? " [" + videoExporter.framesWritten() + " frames / " + nf(videoExporter.framesWritten() / (float) FPS, 0, 1) + "s output]" : "";
-            text(fitTextToWidth(statusMessage + progress, hudW - 16), hudX + 8, hudY + 6);
+            String progress = "";
+            if (exporting && videoExporter != null) {
+                long frames = videoExporter.framesWritten();
+                progress = " [" + frames + " frames / " + nf(frames / (float) FPS, 0, 1) + "s output]";
+            }
+            float availableWidth = hudW - 16;
+            float progressWidth = textWidth(progress);
+            // Reserve live counts without allowing them to displace most of the status/error.
+            // An abnormally narrow canvas prioritises status; full strings remain unchanged.
+            if (progressWidth > availableWidth / 2) progress = "";
+            String visibleStatus = fitTextToWidth(statusMessage, availableWidth - textWidth(progress));
+            text(visibleStatus + progress, hudX + 8, hudY + 6);
             text(fitTextToWidth(summary, hudW - 16), hudX + 8, hudY + 23);
         }
         
