@@ -37,6 +37,12 @@ javac -cp 'lib/core.jar;lib/controlP5/library/*;lib/processing-opengl/library/*;
 java -cp 'bin;lib/core.jar;lib/controlP5/library/*;lib/processing-opengl/library/*;lib/video/library/*' "-Dgstreamer.library.path=$PWD/lib/video/library/windows-amd64" "-Dgstreamer.plugin.path=$PWD/lib/video/library/windows-amd64/gstreamer-1.0" tom.videoGlitcher.VideoGlitcher
 ```
 
+## Optional presentation choice for a later authorised session
+
+Current source accepts `--windowed` after the Java main class or via `bash scripts/run-linux.sh --windowed`, selecting a 960×540 canvas with normal controls/HUD. Default launch stays fullscreen. Do not add `--smoke-test` for an interactive review: it still hides controls and exits automatically. Historical v1.1.3 binaries do not implement the new option.
+
+The fixed canvas must fit the desktop including window decorations; Advanced controls use the existing wheel scroll and `U` hides/restores the panel. Exports follow that 960×540 canvas, including black mattes. This is a source routing/layout option, not a native resource-failure fix or acceptance result. The native-retry stop above still applies. When a later session is separately cleared, record the chosen mode and check load/save/cancel, guide open/close, panel scroll and repeated hide/show at the actual desktop scale.
+
 ## First session, using only a synthetic clip
 
 1. Create a fresh local folder for this evaluation. In that folder run this command; `-n` refuses an existing sample filename. It generates colour bars and motion without reading any third-party media or recording a person:

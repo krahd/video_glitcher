@@ -26,7 +26,7 @@ class PortableLauncherTests(unittest.TestCase):
             uname.write_text('#!/bin/sh\nprintf "arm64\\n"\n')
             uname.chmod(0o755)
             env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ.get("PATH", ""), JAVA_ARGS_CAPTURE=str(capture))
-            args = ["--smoke-test", "--video=/fixture path/owned clip.mp4", "--preset=VHS Decay", "--export-frames=48"]
+            args = ["--smoke-test", "--video=/fixture path/owned clip.mp4", "--preset=VHS Decay", "--export-frames=48", "--windowed"]
             for launcher, platform in (("run-linux.sh", "linux-amd64"), ("run-macos.sh", "macos-aarch64")):
                 with self.subTest(launcher=launcher):
                     target = root / launcher
@@ -52,8 +52,8 @@ class PortableLauncherTests(unittest.TestCase):
             launcher = root / "run-windows.bat"
             shutil.copyfile(REPO / "packaging/portable/run-windows.bat", launcher)
             env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ.get("PATH", ""), JAVA_ARGS_CAPTURE=str(capture))
-            args = ["--smoke-test", r"--video=C:\fixture path\owned clip.mp4", "--preset=VHS Decay", "--export-frames=48"]
-            command = f'""{launcher}" --smoke-test "{args[1]}" "{args[2]}" --export-frames=48"'
+            args = ["--smoke-test", r"--video=C:\fixture path\owned clip.mp4", "--preset=VHS Decay", "--export-frames=48", "--windowed"]
+            command = f'""{launcher}" --smoke-test "{args[1]}" "{args[2]}" --export-frames=48 --windowed"'
             result = subprocess.run("cmd.exe /d /s /v:off /c " + command, env=env, capture_output=True)
             self.assertEqual(result.returncode, 17, result.stderr)
             actual = json.loads(capture.read_text())
