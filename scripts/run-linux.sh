@@ -6,6 +6,14 @@ if [[ ! -f bin/tom/videoGlitcher/VideoGlitcher.class ]]; then
   echo 'Build first: bash scripts/check.sh' >&2
   exit 1
 fi
+# Help needs Java/classes, but no native runtime materialisation or dependency probe.
+# Preserve the exact argument array; the app gives exact --help precedence anywhere.
+for arg in "$@"; do
+  if [[ "$arg" == "--help" ]]; then
+    exec java -cp 'bin:lib/core.jar:lib/controlP5/library/*:lib/processing-opengl/library/*:lib/video/library/*' \
+      tom.videoGlitcher.VideoGlitcher "$@"
+  fi
+done
 if [[ -n "${VIDEO_GLITCHER_NATIVE_DIR:-}" ]]; then
   GST_DIR=$(cd "$VIDEO_GLITCHER_NATIVE_DIR" && pwd)
 else
