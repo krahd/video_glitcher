@@ -28,6 +28,7 @@ public final class FfmpegVideoExporterTest {
             testMissingEncoderAndFolder(directory);
             testEmptyExport(directory);
             testNormalApplicationExit(directory);
+            FfmpegBufferReuseTest.run(directory, false);
             if (!System.getProperty("os.name").startsWith("Windows")) {
                 testEncoderFailure(directory);
                 testEncoderTimeout(directory);
