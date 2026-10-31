@@ -19,21 +19,12 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       FORMULA_NAME: video_glitcher
-      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
       INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag || '' }}
 
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Ensure tap token is configured
-        shell: bash
-        run: |
-          if [ -z "${HOMEBREW_TAP_TOKEN}" ]; then
-            echo "HOMEBREW_TAP_TOKEN is required to update krahd/homebrew-tap." >&2
-            exit 1
-          fi
 
       - name: Resolve release tag
         id: release
@@ -99,10 +90,14 @@ jobs:
           echo "Timed out waiting for video_glitcher-macos-aarch64.zip and video_glitcher-linux-amd64.zip on ${RELEASE_TAG}." >&2
           exit 1
 
-      - name: Clone tap repo
-        shell: bash
-        run: |
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/krahd/homebrew-tap.git" tap-repo
+      - name: Check out shared Homebrew tap
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: krahd/homebrew-tap
+          ref: main
+          path: tap-repo
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          persist-credentials: true
 
       - name: Render formula
         shell: bash
