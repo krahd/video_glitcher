@@ -1,6 +1,6 @@
 # video_glitcher – Project Status
 
-Last updated: 2026-10-12 15:38
+Last updated: 2026-10-31 03:44
 
 ## Project purpose
 
@@ -233,6 +233,8 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 
 ## Known issues, risks, and limitations
 
+- Homebrew tap publishing credential hardening (31 October 2026): workflow now uses a pinned secondary `actions/checkout` instead of including the publishing token in a Git remote URL. Runtime execution of the changed workflow and provider-side token scope/rotation remain unverified.
+
 - The optional 960×540 window has headless routing/control-layout coverage only. It requires enough desktop area for OS decorations; actual DPI, P2D rendering and native chooser/workflow acceptance remain open. Smaller canvas selection changes output dimensions and does not promise overload recovery or a native stability fix.
 
 - Native recording stability remains unestablished after an unresolved Killed/137 event with a disposed-buffer callback warning at `da183177`. The memory-guarded retry was intentionally incomplete, not a pass. A fresh paused Rewind preview also remains unimplemented; the corrected status explains the current Play requirement.
@@ -290,4 +292,4 @@ Manual/runtime validation remains important because fullscreen Processing behavi
 - Local verification for this audit: 49 Python tests ran, 47 passed and two skipped (Windows command processor and absent full compiled app). Pure Java logic and 93 real-encoder assertions passed. This workspace recovered text source through GitHub; binary dependency recovery is unavailable through its text-only connector, so full compilation/workflow/GPU/native checks were not repeated locally. Before this review repair, exact-head CI passed at `e6a67051af74e8cd58c5d2f5fc83098f5d070f11` in runs `37542960852` and `37542955166`, including full application compilation on Linux/macOS/Windows, 93 encoder checks and workflow tests. The first descriptor repair at `f762bb3` passed Linux, Windows and encoder jobs but failed macOS on the root-spelling bug above; those failed runs are `37543905099` and `37543899732`. The alias correction passed the original macOS cases; its additional canonical test fixture required `self.repo.resolve()` rather than a third unselected spelling. Final code/test head `c598964b0b299535acb75862c10ef5d3d8f65104` passed both exact-head CI runs `37544725979` (PR) and `37544721395` (push). Actual logs confirm full compilation and 49 Python tests on Linux/macOS/Windows: expected skips 1/10/32 respectively. Windows staging fails closed; its supported archive/launcher checks pass. Linux also passes 93 real-encoder assertions, headless workflow tests and 155-link validation. Fresh independent review accepted that exact source under the stated trusted/cooperative contract. No release artifact, installer or external upload was produced.
 - Existing release asset names, release-bundle/Homebrew publication workflows, Homebrew formula/rendering and VS Code packaging commands remain unchanged. The documentation-site workflow is now manual-only as described above. Their runtime/rights gaps are documented, not declared solved by these tests.
 
-Last updated: 2026-10-12 15:38
+Last updated: 2026-10-31 03:44
